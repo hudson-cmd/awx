@@ -2,11 +2,11 @@
 - name: Backup e envio de arquivos via SCP
   hosts: localhost
   connection: local
-  become: false            # Evita uso de sudo/su no AWX container
-  gather_facts: false      # Evita erro no módulo setup
+  become: false
+  gather_facts: false
 
   vars:
-    destino: "/home/suporte/backup_envio"
+    destino: "/tmp/backup_envio"  # Alterado para /tmp (diretório acessível)
     cert_dir: "/etc/pki/tls"
     rede_dir: "/etc/sysconfig/network-scripts"
     backup_dir: "/var/uscallbackup"
