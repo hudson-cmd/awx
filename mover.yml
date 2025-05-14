@@ -1,83 +1,49 @@
----
-- name: Backup e envio de arquivos via SCP
-  hosts: localhost
-  connection: local
-  become: false
-  gather_facts: false
+#!/bin/bash
 
-  vars:
-    destino: "/tmp/backup_envio"  # Alterado para /tmp (diretório acessível)
-    cert_dir: "/etc/pki/tls"
-    rede_dir: "/etc/sysconfig/network-scripts"
-    backup_dir: "/var/uscallbackup"
-    codec_path: "/usr/lib64/asterisk/modules/codec_g729.so"
+# Caminhos
+DESTINO="/home/suporte/backup_envio"
+CERT_DIR="/etc/pki/tls"
+REDE_DIR="/etc/sysconfig/network-scripts"
+BACKUP_DIR="/var/uscallbackup"
+CODEC_PATH="/usr/lib64/asterisk/modules/codec_g729.so"
 
-  tasks:
-    - name: Verifica se sshpass está instalado
-      shell: command -v sshpass
-      register: sshpass_check
-      failed_when: sshpass_check.rc != 0
+# Verifica se o sshpass está instalado
+if ! command -v sshpass &> /dev/null; then
+    echo "[ERRO] sshpass não está instalado. Instale com:"
+    echo "  sudo yum install -y sshpass"
+    exit 1
+fi
 
-    - name: Cria diretório de destino
-      file:
-        path: "{{ destino }}"
-        state: directory
-        mode: '0755'
+# Cria pasta de backup
+mkdir -p "$DESTINO"
+echo "[+] Diretório de backup criado: $DESTINO"
 
-    - name: Descobre o último arquivo de backup
-      shell: "ls -t {{ backup_dir }} | head -n 1"
-      register: ultimo_backup
-      changed_when: false
-      failed_when: false
+echo "[+] Copiando o último backup realizado..."
+ULTIMO_BACKUP=$(ls -t "$BACKUP_DIR" | head -n 1)
 
-    - name: Copia o último backup (se existir)
-      copy:
-        src: "{{ backup_dir }}/{{ ultimo_backup.stdout }}"
-        dest: "{{ destino }}/"
-        remote_src: yes
-      when: ultimo_backup.stdout != ""
+if [ -n "$ULTIMO_BACKUP" ]; then
+    cp "$BACKUP_DIR/$ULTIMO_BACKUP" "$DESTINO/"
+    echo "[+] Backup copiado: $ULTIMO_BACKUP"
+else
+    echo "[!] Nenhum arquivo de backup encontrado em $BACKUP_DIR"
+fi
 
-    - name: Copia arquivos de rede ifcfg-*
-      shell: cp {{ rede_dir }}/ifcfg-* {{ destino }}/ 2>/dev/null || true
+echo "[+] Copiando arquivos de rede..."
+cp $REDE_DIR/ifcfg-* "$DESTINO/" 2>/dev/null
+cp $REDE_DIR/route-* "$DESTINO/" 2>/dev/null
+echo "[+] Arquivos de rede copiados."
 
-    - name: Copia arquivos de rota route-*
-      shell: cp {{ rede_dir }}/route-* {{ destino }}/ 2>/dev/null || true
+echo "[+] Copiando certificados SSL do Nginx..."
+cp "$CERT_DIR/certs/localhost.crt" "$DESTINO/" 2>/dev/null
+cp "$CERT_DIR/private/localhost.key" "$DESTINO/" 2>/dev/null
+echo "[+] Certificados SSL copiados."
 
-    - name: Copia certificado SSL
-      copy:
-        src: "{{ cert_dir }}/certs/localhost.crt"
-        dest: "{{ destino }}/"
-        remote_src: yes
-      ignore_errors: true
+echo "[+] Copiando codec G.729..."
+if [ -f "$CODEC_PATH" ]; then
+    cp "$CODEC_PATH" "$DESTINO/"
+    echo "[+] Codec G.729 copiado."
+else
+    echo "[!] Codec G.729 não encontrado em $CODEC_PATH"
+fi
 
-    - name: Copia chave privada SSL
-      copy:
-        src: "{{ cert_dir }}/private/localhost.key"
-        dest: "{{ destino }}/"
-        remote_src: yes
-      ignore_errors: true
-
-    - name: Copia codec G.729 se existir
-      copy:
-        src: "{{ codec_path }}"
-        dest: "{{ destino }}/"
-        remote_src: yes
-      ignore_errors: true
-
-    - name: Envia arquivos via SCP usando sshpass
-      command: >
-        sshpass -p {{ senha_remoto }}
-        scp -P 8222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
-        -r {{ destino }}
-        {{ usuario_remoto }}@{{ ip_destino }}:/home/{{ usuario_remoto }}/
-      register: envio_result
-      changed_when: "'100%' in envio_result.stdout or envio_result.rc == 0"
-
-    - name: Mostra resultado do envio
-      debug:
-        msg: >
-          {% if envio_result.rc == 0 %}
-            [✓] Envio finalizado com sucesso!
-          {% else %}
-            [X] Falha no envio via SCP.
-          {% endif %}
+echo "[+] Script finalizado."
