@@ -1,49 +1,80 @@
-#!/bin/bash
+---
+- name: Backup e envio de arquivos via SCP
+  hosts: localhost
+  become: true
 
-# Caminhos
-DESTINO="/home/suporte/backup_envio"
-CERT_DIR="/etc/pki/tls"
-REDE_DIR="/etc/sysconfig/network-scripts"
-BACKUP_DIR="/var/uscallbackup"
-CODEC_PATH="/usr/lib64/asterisk/modules/codec_g729.so"
+  vars:
+    destino: "/home/suporte/backup_envio"
+    cert_dir: "/etc/pki/tls"
+    rede_dir: "/etc/sysconfig/network-scripts"
+    backup_dir: "/var/uscallbackup"
+    codec_path: "/usr/lib64/asterisk/modules/codec_g729.so"
+    script_path: "/tmp/backup_script.sh"
 
-# Verifica se o sshpass está instalado
-if ! command -v sshpass &> /dev/null; then
-    echo "[ERRO] sshpass não está instalado. Instale com:"
-    echo "  sudo yum install -y sshpass"
-    exit 1
-fi
+  tasks:
+    - name: Cria o script de backup
+      copy:
+        dest: "{{ script_path }}"
+        content: |
+          #!/bin/bash
+          
+          # Caminhos
+          DESTINO="{{ destino }}"
+          CERT_DIR="{{ cert_dir }}"
+          REDE_DIR="{{ rede_dir }}"
+          BACKUP_DIR="{{ backup_dir }}"
+          CODEC_PATH="{{ codec_path }}"
 
-# Cria pasta de backup
-mkdir -p "$DESTINO"
-echo "[+] Diretório de backup criado: $DESTINO"
+          # Verifica se o sshpass está instalado
+          if ! command -v sshpass &> /dev/null; then
+              echo "[ERRO] sshpass não está instalado. Instale com:"
+              echo "  sudo yum install -y sshpass"
+              exit 1
+          fi
 
-echo "[+] Copiando o último backup realizado..."
-ULTIMO_BACKUP=$(ls -t "$BACKUP_DIR" | head -n 1)
+          # Cria pasta de backup
+          mkdir -p "$DESTINO"
+          echo "[+] Diretório de backup criado: $DESTINO"
 
-if [ -n "$ULTIMO_BACKUP" ]; then
-    cp "$BACKUP_DIR/$ULTIMO_BACKUP" "$DESTINO/"
-    echo "[+] Backup copiado: $ULTIMO_BACKUP"
-else
-    echo "[!] Nenhum arquivo de backup encontrado em $BACKUP_DIR"
-fi
+          echo "[+] Copiando o último backup realizado..."
+          ULTIMO_BACKUP=$(ls -t "$BACKUP_DIR" | head -n 1)
 
-echo "[+] Copiando arquivos de rede..."
-cp $REDE_DIR/ifcfg-* "$DESTINO/" 2>/dev/null
-cp $REDE_DIR/route-* "$DESTINO/" 2>/dev/null
-echo "[+] Arquivos de rede copiados."
+          if [ -n "$ULTIMO_BACKUP" ]; then
+              cp "$BACKUP_DIR/$ULTIMO_BACKUP" "$DESTINO/"
+              echo "[+] Backup copiado: $ULTIMO_BACKUP"
+          else
+              echo "[!] Nenhum arquivo de backup encontrado em $BACKUP_DIR"
+          fi
 
-echo "[+] Copiando certificados SSL do Nginx..."
-cp "$CERT_DIR/certs/localhost.crt" "$DESTINO/" 2>/dev/null
-cp "$CERT_DIR/private/localhost.key" "$DESTINO/" 2>/dev/null
-echo "[+] Certificados SSL copiados."
+          echo "[+] Copiando arquivos de rede..."
+          cp $REDE_DIR/ifcfg-* "$DESTINO/" 2>/dev/null
+          cp $REDE_DIR/route-* "$DESTINO/" 2>/dev/null
+          echo "[+] Arquivos de rede copiados."
 
-echo "[+] Copiando codec G.729..."
-if [ -f "$CODEC_PATH" ]; then
-    cp "$CODEC_PATH" "$DESTINO/"
-    echo "[+] Codec G.729 copiado."
-else
-    echo "[!] Codec G.729 não encontrado em $CODEC_PATH"
-fi
+          echo "[+] Copiando certificados SSL do Nginx..."
+          cp "$CERT_DIR/certs/localhost.crt" "$DESTINO/" 2>/dev/null
+          cp "$CERT_DIR/private/localhost.key" "$DESTINO/" 2>/dev/null
+          echo "[+] Certificados SSL copiados."
 
-echo "[+] Script finalizado."
+          echo "[+] Copiando codec G.729..."
+          if [ -f "$CODEC_PATH" ]; then
+              cp "$CODEC_PATH" "$DESTINO/"
+              echo "[+] Codec G.729 copiado."
+          else
+              echo "[!] Codec G.729 não encontrado em $CODEC_PATH"
+          fi
+
+          echo "[+] Script finalizado."
+    
+    - name: Torna o script executável
+      file:
+        path: "{{ script_path }}"
+        mode: '0755'
+
+    - name: Executa o script de backup
+      command: "{{ script_path }}"
+      register: backup_output
+
+    - name: Mostra a saída do script de backup
+      debug:
+        msg: "{{ backup_output.stdout }}"
