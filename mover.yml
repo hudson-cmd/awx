@@ -1,7 +1,9 @@
 ---
 - name: Backup e envio de arquivos via SCP
   hosts: localhost
-  become: true
+  connection: local
+  become: false            # Evita uso de sudo/su no AWX container
+  gather_facts: false      # Evita erro no módulo setup
 
   vars:
     destino: "/home/suporte/backup_envio"
