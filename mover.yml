@@ -1,6 +1,6 @@
 ---
 - name: Teste de comando yum update
-  hosts: localhost
+  hosts: all
   tasks:
     - name: Atualizar o pacote uscall
       command: yum update uscall -y
