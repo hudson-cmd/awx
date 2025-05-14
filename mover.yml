@@ -1,5 +1,6 @@
 ---
 - name: Teste de comando yum update
+  become :yes
   hosts: all
   tasks:
     - name: Atualizar o pacote uscall
