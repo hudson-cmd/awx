@@ -14,7 +14,7 @@
 
   tasks:
     - name: Verifica se sshpass está instalado
-      command: which sshpass
+      shell: command -v sshpass
       register: sshpass_check
       failed_when: sshpass_check.rc != 0
 
