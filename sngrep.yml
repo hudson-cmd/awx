@@ -1,0 +1,25 @@
+---
+- name: Instalar wget e baixar sngrep via wget
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Instalar o wget
+      package:
+        name: wget
+        state: present
+
+    - name: Criar diretório temporário para download
+      file:
+        path: /tmp/sngrep
+        state: directory
+        mode: '0755'
+
+    - name: Baixar o pacote sngrep via wget
+      get_url:
+        url: http://repo.iotti.biz/CentOS/8/x86_64/sngrep-1.7.0-0.el8.lux.x86_64.rpm
+        dest: /tmp/sngrep/sngrep-1.7.0-0.el8.lux.x86_64.rpm
+        mode: '0644'
+
+    - name: Instalar o pacote com rpm -ivh
+      command: rpm -ivh /tmp/sngrep/sngrep-1.7.0-0.el8.lux.x86_64.rpm
