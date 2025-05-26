@@ -3,29 +3,41 @@
   hosts: all
   become: true
 
+  vars:
+    user_name: acessotr
+    user_home: "/home/acessotr"
+
   tasks:
 
-    - name: Criar o usuário acessotr com shell restrito (rbash)
+    - name: Garantir que /bin/rbash existe como link simbólico para /bin/bash
+      file:
+        src: /bin/bash
+        dest: /bin/rbash
+        state: link
+        force: yes
+
+    - name: Criar o usuário acessotr com shell restrito (rbash) sem senha
       user:
-        name: acessotr
+        name: "{{ user_name }}"
         shell: /bin/rbash
         create_home: yes
+        password_lock: yes
 
     - name: Criar diretório bin pessoal para comandos permitidos
       file:
-        path: /home/acessotr/bin
+        path: "{{ user_home }}/bin"
         state: directory
-        owner: acessotr
-        group: acessotr
+        owner: "{{ user_name }}"
+        group: "{{ user_name }}"
         mode: '0755'
 
     - name: Criar links simbólicos para comandos permitidos
       file:
         src: "{{ item.src }}"
-        dest: "/home/acessotr/bin/{{ item.name }}"
+        dest: "{{ user_home }}/bin/{{ item.name }}"
         state: link
-        owner: acessotr
-        group: acessotr
+        owner: "{{ user_name }}"
+        group: "{{ user_name }}"
       loop:
         - { name: ls,         src: /bin/ls }
         - { name: cp,         src: /bin/cp }
@@ -35,21 +47,17 @@
 
     - name: Configurar .bash_profile com PATH restrito
       copy:
-        dest: /home/acessotr/.bash_profile
+        dest: "{{ user_home }}/.bash_profile"
         content: 'PATH=$HOME/bin'
-        owner: acessotr
-        group: acessotr
+        owner: "{{ user_name }}"
+        group: "{{ user_name }}"
         mode: '0644'
-
-    - name: Remover usuário acessotr do grupo sudo (caso exista)
-      command: deluser acessotr sudo
-      ignore_errors: yes
 
     - name: Adicionar regras sudo limitadas para acessotr
       copy:
-        dest: /etc/sudoers.d/acessotr
+        dest: "/etc/sudoers.d/{{ user_name }}"
         content: |
-          acessotr ALL=(ALL) NOPASSWD: /bin/ls, /bin/cp, /usr/bin/vim, /bin/systemctl, /sbin/ifconfig
+          {{ user_name }} ALL=(ALL) NOPASSWD: /bin/ls, /bin/cp, /usr/bin/vim, /bin/systemctl, /sbin/ifconfig
         owner: root
         group: root
         mode: '0440'
