@@ -31,7 +31,7 @@
         group: "{{ user_name }}"
         mode: '0755'
 
-    - name: Criar links simbólicos para comandos permitidos
+    - name: Criar links simbólicos para comandos permitidos (sem vim e cp)
       file:
         src: "{{ item.src }}"
         dest: "{{ user_home }}/bin/{{ item.name }}"
@@ -40,24 +40,32 @@
         group: "{{ user_name }}"
       loop:
         - { name: ls,         src: /bin/ls }
-        - { name: cp,         src: /bin/cp }
-        - { name: vim,        src: /usr/bin/vim }
         - { name: systemctl,  src: /bin/systemctl }
         - { name: ifconfig,   src: /sbin/ifconfig }
+        - { name: htop,       src: /usr/bin/htop }
+        - { name: sngrep,     src: /usr/bin/sngrep }
 
-    - name: Configurar .bash_profile com PATH restrito
+    - name: Configurar .bash_profile com PATH restrito incluindo sudo
       copy:
         dest: "{{ user_home }}/.bash_profile"
-        content: 'PATH=$HOME/bin'
+        content: |
+          PATH=$HOME/bin:/usr/bin:/bin
+          export PATH
         owner: "{{ user_name }}"
         group: "{{ user_name }}"
         mode: '0644'
 
-    - name: Adicionar regras sudo limitadas para acessotr
+    - name: Criar arquivo sudoers com comandos permitidos para acessotr
       copy:
         dest: "/etc/sudoers.d/{{ user_name }}"
         content: |
-          {{ user_name }} ALL=(ALL) NOPASSWD: /bin/ls, /bin/cp, /usr/bin/vim, /bin/systemctl, /sbin/ifconfig
+          {{ user_name }} ALL=(ALL) NOPASSWD: \
+          /bin/ls, \
+          /bin/systemctl status asterisk, \
+          /bin/systemctl status nginx, \
+          /usr/bin/sngrep -c, \
+          /usr/bin/sngrep, \
+          /usr/bin/htop
         owner: root
         group: root
         mode: '0440'
