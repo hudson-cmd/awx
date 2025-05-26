@@ -1,0 +1,55 @@
+---
+- name: Configurar usuário acessotr com shell restrito e sudo limitado
+  hosts: all
+  become: true
+
+  tasks:
+
+    - name: Criar o usuário acessotr com shell restrito (rbash)
+      user:
+        name: acessotr
+        shell: /bin/rbash
+        create_home: yes
+
+    - name: Criar diretório bin pessoal para comandos permitidos
+      file:
+        path: /home/acessotr/bin
+        state: directory
+        owner: acessotr
+        group: acessotr
+        mode: '0755'
+
+    - name: Criar links simbólicos para comandos permitidos
+      file:
+        src: "{{ item.src }}"
+        dest: "/home/acessotr/bin/{{ item.name }}"
+        state: link
+        owner: acessotr
+        group: acessotr
+      loop:
+        - { name: ls,         src: /bin/ls }
+        - { name: cp,         src: /bin/cp }
+        - { name: vim,        src: /usr/bin/vim }
+        - { name: systemctl,  src: /bin/systemctl }
+        - { name: ifconfig,   src: /sbin/ifconfig }
+
+    - name: Configurar .bash_profile com PATH restrito
+      copy:
+        dest: /home/acessotr/.bash_profile
+        content: 'PATH=$HOME/bin'
+        owner: acessotr
+        group: acessotr
+        mode: '0644'
+
+    - name: Remover usuário acessotr do grupo sudo (caso exista)
+      command: deluser acessotr sudo
+      ignore_errors: yes
+
+    - name: Adicionar regras sudo limitadas para acessotr
+      copy:
+        dest: /etc/sudoers.d/acessotr
+        content: |
+          acessotr ALL=(ALL) NOPASSWD: /bin/ls, /bin/cp, /usr/bin/vim, /bin/systemctl, /sbin/ifconfig
+        owner: root
+        group: root
+        mode: '0440'
