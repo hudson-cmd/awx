@@ -1,6 +1,6 @@
 ---
 - name: Deploy arquivos de backup para os destinos corretos
-  hosts: seu_grupo_ou_host
+  hosts: all
   become: yes
   tasks:
     - name: Copiar arquivos backup-uscall* para /var/uscallbackup
