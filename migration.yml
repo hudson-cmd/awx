@@ -1,10 +1,5 @@
----
-- name: Enviar script wizard.sh para o servidor de destino
-  hosts: all
-  become: yes
-  tasks:
-    - name: Copiar o wizard.sh para /home/suporte
-      copy:
-        src: /home/suporte/wizard.sh
-        dest: /home/suporte/wizard.sh
-        mode: '0755'
+- name: Copiar wizard.sh para o host
+  copy:
+    src: files/wizard.sh
+    dest: /tmp/wizard.sh
+    mode: '0755'
