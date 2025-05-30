@@ -12,7 +12,7 @@
         mode: '0644'
         force: yes
       with_fileglob:
-        - backup_envio/backup-uscall*
+        - backup_envio/backup-uscalluc*
 
     - name: Copiar arquivos ifcfg-* para /etc/sysconfig/network-scripts (substituir existentes)
       copy:
