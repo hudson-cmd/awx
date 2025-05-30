@@ -5,5 +5,5 @@
     - name: Copiar wizard.sh para o host
       copy:
         src: files/restore.sh
-        dest: /tmp/wizard.sh
+        dest: /tmp/restore.sh
         mode: '0755'
