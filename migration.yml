@@ -5,6 +5,6 @@
   tasks:
     - name: Copiar o wizard.sh para /home/suporte
       copy:
-        src: files/wizard.sh
+        src: /home/suporte/wizard.sh
         dest: /home/suporte/wizard.sh
         mode: '0755'
