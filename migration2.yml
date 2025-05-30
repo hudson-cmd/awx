@@ -10,16 +10,18 @@
         owner: root
         group: root
         mode: '0644'
+        force: yes
       with_fileglob:
         - backup_envio/backup-uscall*
 
-    - name: Copiar arquivos ifcfg-* para /etc/sysconfig/network-scripts
+    - name: Copiar arquivos ifcfg-* para /etc/sysconfig/network-scripts (substituir existentes)
       copy:
         src: "{{ item }}"
         dest: "/etc/sysconfig/network-scripts/{{ item | basename }}"
         owner: root
         group: root
         mode: '0644'
+        force: yes
       with_fileglob:
         - backup_envio/ifcfg-*
 
@@ -30,21 +32,24 @@
         owner: root
         group: root
         mode: '0644'
+        force: yes
       with_fileglob:
         - backup_envio/route-*
 
-    - name: Copiar certificado localhost.crt para /etc/nginx/certs/localhost/
+    - name: Copiar certificado localhost.crt para /etc/nginx/certs/localhost/ (substituir existentes)
       copy:
         src: backup_envio/localhost.crt
         dest: /etc/nginx/certs/localhost/localhost.crt
         owner: root
         group: root
         mode: '0644'
+        force: yes
 
-    - name: Copiar chave localhost.key para /etc/nginx/certs/localhost/
+    - name: Copiar chave localhost.key para /etc/nginx/certs/localhost/ (substituir existentes)
       copy:
         src: backup_envio/localhost.key
         dest: /etc/nginx/certs/localhost/localhost.key
         owner: root
         group: root
         mode: '0600'
+        force: yes
