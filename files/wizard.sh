@@ -23,11 +23,15 @@ echo -e "\n==== Início do wizard - $(date) ===="
 
 echo -e "${CYAN}--- Assistente de Backup e Envio - Union Telecom ---${NC}"
 
-# Verifica sshpass
+# Instala sshpass se não estiver instalado
 if ! command -v sshpass &> /dev/null; then
-    echo -e "${RED}[ERRO] sshpass não está instalado.${NC}"
-    echo "  sudo yum install -y sshpass"
-    exit 1
+    echo -e "${YELLOW}[!] sshpass não encontrado. Instalando...${NC}"
+    yum install -y sshpass
+    if ! command -v sshpass &> /dev/null; then
+        echo -e "${RED}[X] Falha ao instalar sshpass. Saindo...${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}[✓] sshpass instalado com sucesso.${NC}"
 fi
 
 # Criação da pasta
