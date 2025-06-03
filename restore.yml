@@ -10,27 +10,19 @@
     - name: Copiar arquivos de rede
       ansible.builtin.shell: |
         cp -f {{ origem }}/ifcfg-* {{ origem }}/route-* /etc/sysconfig/network-scripts/ 2>/dev/null
-      args:
-        warn: false
 
     - name: Copiar certificados SSL
       ansible.builtin.shell: |
         cp -f {{ origem }}/localhost.crt /etc/nginx/certs/localhost/ 2>/dev/null
         cp -f {{ origem }}/localhost.key /etc/nginx/certs/localhost/ 2>/dev/null
-      args:
-        warn: false
 
     - name: Copiar codec G.729
       ansible.builtin.shell: |
         cp -f {{ origem }}/codec_g729.so /usr/lib64/asterisk/modules/ 2>/dev/null
-      args:
-        warn: false
 
     - name: Copiar arquivos de backup (.tar.gz)
       ansible.builtin.shell: |
         cp -f {{ origem }}/*.tar.gz /var/uscallbackup/ 2>/dev/null
-      args:
-        warn: false
 
     - name: Exibir status final
       ansible.builtin.debug:
