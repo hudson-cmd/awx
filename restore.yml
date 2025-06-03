@@ -26,13 +26,12 @@
       args:
         warn: false
 
-    - name: Copiar arquivos de backup (.tar.gz e .bak)
+    - name: Copiar arquivos de backup (.tar.gz)
       ansible.builtin.shell: |
         cp -f {{ origem }}/*.tar.gz /var/uscallbackup/ 2>/dev/null
-        cp -f {{ origem }}/*.bak /var/uscallbackup/ 2>/dev/null
       args:
         warn: false
 
-    - name: Exibir mensagem final
+    - name: Exibir status final
       ansible.builtin.debug:
         msg: "[✓] Arquivos copiados e substituídos com sucesso."
