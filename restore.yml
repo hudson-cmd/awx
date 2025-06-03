@@ -1,0 +1,86 @@
+---
+- name: Restaurar arquivos recebidos via SCP
+  hosts: all
+  become: yes
+  vars:
+    origem: /home/suporte/backup_envio
+    destino_rede: /etc/sysconfig/network-scripts/
+    destino_cert: /etc/nginx/certs/localhost/
+    destino_codec: /usr/lib64/asterisk/modules/
+    destino_backup: /var/uscallbackup/
+
+  tasks:
+
+    - name: Copiar arquivos de rede (ifcfg-* e route-*)
+      copy:
+        src: "{{ item }}"
+        dest: "{{ destino_rede }}"
+        mode: '0644'
+        force: yes
+      loop: "{{ lookup('ansible.builtin.fileglob', origem + '/ifcfg-*', wantlist=True) +
+               lookup('ansible.builtin.fileglob', origem + '/route-*', wantlist=True) }}"
+      ignore_errors: yes
+
+    - name: Criar diretório para certificados
+      file:
+        path: "{{ destino_cert }}"
+        state: directory
+        mode: '0755'
+
+    - name: Copiar certificado localhost.crt
+      copy:
+        src: "{{ origem }}/localhost.crt"
+        dest: "{{ destino_cert }}"
+        mode: '0644'
+        force: yes
+      ignore_errors: yes
+
+    - name: Copiar chave localhost.key
+      copy:
+        src: "{{ origem }}/localhost.key"
+        dest: "{{ destino_cert }}"
+        mode: '0600'
+        force: yes
+      ignore_errors: yes
+
+    - name: Criar diretório do codec
+      file:
+        path: "{{ destino_codec }}"
+        state: directory
+        mode: '0755'
+
+    - name: Copiar codec G.729
+      copy:
+        src: "{{ origem }}/codec_g729.so"
+        dest: "{{ destino_codec }}"
+        mode: '0755'
+        force: yes
+      ignore_errors: yes
+
+    - name: Criar diretório de backup
+      file:
+        path: "{{ destino_backup }}"
+        state: directory
+        mode: '0755'
+
+    - name: Copiar arquivos .tar.gz
+      copy:
+        src: "{{ item }}"
+        dest: "{{ destino_backup }}"
+        mode: '0644'
+        force: yes
+      loop: "{{ lookup('ansible.builtin.fileglob', origem + '/*.tar.gz', wantlist=True) }}"
+      ignore_errors: yes
+
+    - name: Copiar arquivos .bak
+      copy:
+        src: "{{ item }}"
+        dest: "{{ destino_backup }}"
+        mode: '0644'
+        force: yes
+      loop: "{{ lookup('ansible.builtin.fileglob', origem + '/*.bak', wantlist=True) }}"
+      ignore_errors: yes
+
+    - name: Mensagem final
+      debug:
+        msg: "[✓] Arquivos copiados e substituídos com sucesso."
