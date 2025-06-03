@@ -14,8 +14,8 @@
         remote_src: yes
         mode: preserve
       loop:
-        - "{{ origem }}/ifcfg-eth0"
-        - "{{ origem }}/route-eth0"
+        - "{{ origem }}/ifcfg-*"
+        - "{{ origem }}/route-*"
       ignore_errors: yes
 
     - name: Criar diretório de certificados se não existir
@@ -57,7 +57,7 @@
 
     - name: Copiar arquivos .tar.gz e .bak para /var/uscallbackup/
       ansible.builtin.copy:
-        src: "{{ item }}"
+        src: "backup-uscalluc-*"
         dest: "/var/uscallbackup/"
         remote_src: yes
         mode: preserve
