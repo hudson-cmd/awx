@@ -1,0 +1,8 @@
+- name: Bloquear IP com iptables
+  hosts: all
+  become: yes
+  tasks:
+    - name: Bloquear o IP 103.176.90.16 no iptables
+      ansible.builtin.command: iptables -I INPUT -s 103.176.90.16 -j DROP
+      args:
+        warn: false
