@@ -2,29 +2,30 @@
 - name: Criar MOTD personalizado para o usuário 'suporte'
   hosts: all
   become: true
-  tasks:
 
-    - name: Criar o script /etc/profile.d/motd.sh
+  tasks:
+    - name: Copiar /etc/profile.d/motd.sh
       ansible.builtin.copy:
         dest: /etc/profile.d/motd.sh
         owner: root
         group: root
         mode: '0755'
-        content: |
+        content: |-
           #!/bin/bash
 
-# Verifica se o usuário é "suporte"
-if [[ "$USER" == "suporte" ]]; then
-        hostname=$(echo "$HOSTNAME")
-        dominio=$(echo "$hostname" | tr '[:upper:]' '[:lower:]' | sed 's/^srv-//' | sed 's/-/./g')
-        dominio="${dominio}.com.br"
-        echo "===================================="
-        echo " 🖥️ Servidor: $(hostname)"
-        echo " 📅 Data: $(date)"
-        echo " ⏳ Uptime: $(uptime -p)"
-        echo " 📊 Usuários logados: $(who | wc -l)"
-        echo " 🌐 Espaço livre no disco: $(df -h / | tail -1 | awk '{print $4}')"
-        echo " 📦 Versão USCall: $(rpm -q uscall)"
-        echo " 🏷️ DNS: $dominio"
-        echo "===================================="
-fi
+          # Verifica se o usuário é "suporte"
+          if [[ "$USER" == "suporte" ]]; then
+              hostname=$(echo "$HOSTNAME")
+              dominio=$(echo "$hostname" | tr '[:upper:]' '[:lower:]' | sed 's/^srv-//' | sed 's/-/./g')
+              dominio="${dominio}.com.br"
+
+              echo "===================================="
+              echo " 🖥️ Servidor: $(hostname)"
+              echo " 📅 Data: $(date)"
+              echo " ⏳ Uptime: $(uptime -p)"
+              echo " 📊 Usuários logados: $(who | wc -l)"
+              echo " 🌐 Espaço livre no disco: $(df -h / | tail -1 | awk '{print $4}')"
+              echo " 📦 Versão USCall: $(rpm -q uscall)"
+              echo " 🏷️ DNS: $dominio"
+              echo "===================================="
+          fi
