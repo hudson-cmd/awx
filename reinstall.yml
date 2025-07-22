@@ -1,0 +1,7 @@
+---
+- name: Comando yum reinstall do Uscall
+  become: yes
+  hosts: all
+  tasks:
+    - name: Reinstalar o pacote uscall
+      command: yum reinstall uscall -y
