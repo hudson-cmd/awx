@@ -1,5 +1,5 @@
 ---
-- name: Teste de comando yum update
+- name: Comando yum update do Uscall
   become: yes
   hosts: all
   tasks:
