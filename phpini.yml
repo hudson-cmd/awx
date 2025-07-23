@@ -1,0 +1,32 @@
+---
+- name: Ajustar parâmetros de sessão no php.ini e reiniciar PHP-FPM
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Alterando 'session.gc_maxlifetime' 
+      lineinfile:
+        path: /etc/opt/remi/php73/php.ini
+        regexp: '^session\.gc_maxlifetime\s*='
+        line: 'session.gc_maxlifetime = 31557600'
+        backup: yes
+
+    - name: Alterando 'session.gc_probability' 
+      lineinfile:
+        path: /etc/opt/remi/php73/php.ini
+        regexp: '^session\.gc_probability\s*='
+        line: 'session.gc_probability = 0'
+        backup: yes
+
+    - name: Alterando 'session.gc_divisor' 
+      lineinfile:
+        path: /etc/opt/remi/php73/php.ini
+        regexp: '^session\.gc_divisor\s*='
+        line: 'session.gc_divisor = 0'
+        backup: yes
+
+    - name: Reiniciar o serviço php 7.3
+      systemd:
+        name: php73-php-fpm.service
+        state: restarted
+        enabled: true
