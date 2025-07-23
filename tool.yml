@@ -5,3 +5,4 @@
   tasks:
     - name: Install OPEN VM TOOLS PACKAGE
       command: yum install open-vm-tools -y
+      command : init 6 
