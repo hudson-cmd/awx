@@ -1,0 +1,7 @@
+---
+- name: OPEN VMTOOLS INSTALL
+  become: yes
+  hosts: all
+  tasks:
+    - name: Install OPEN VM TOOLS PACKAGE
+      command: yum install open-vm-tools
