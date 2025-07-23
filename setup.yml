@@ -1,5 +1,5 @@
 ---
-- name: Rotina completa: uscall, php.ini, MOTD, sngrep, g729 e open-vm-tools com reboot
+- name: Rotina completa uscall, php.ini, motd, sngrep, g729 e vm-tools
   hosts: all
   become: yes
 
