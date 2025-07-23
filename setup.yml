@@ -1,0 +1,100 @@
+---
+- name: Rotina completa: uscall, php.ini, MOTD, sngrep e open-vm-tools com reboot
+  hosts: all
+  become: yes
+
+  tasks:
+    # Atualizar e reinstalar uscall
+    - name: Atualizar o pacote uscall
+      command: yum update uscall -y
+
+    - name: Reinstalar o pacote uscall
+      command: yum reinstall uscall -y
+
+    # Ajustar php.ini
+    - name: Alterando 'session.gc_maxlifetime' 
+      lineinfile:
+        path: /etc/opt/remi/php73/php.ini
+        regexp: '^session\.gc_maxlifetime\s*='
+        line: 'session.gc_maxlifetime = 31557600'
+        backup: yes
+
+    - name: Alterando 'session.gc_probability' 
+      lineinfile:
+        path: /etc/opt/remi/php73/php.ini
+        regexp: '^session\.gc_probability\s*='
+        line: 'session.gc_probability = 0'
+        backup: yes
+
+    - name: Alterando 'session.gc_divisor' 
+      lineinfile:
+        path: /etc/opt/remi/php73/php.ini
+        regexp: '^session\.gc_divisor\s*='
+        line: 'session.gc_divisor = 0'
+        backup: yes
+
+    - name: Reiniciar o serviço php 7.3
+      systemd:
+        name: php73-php-fpm.service
+        state: restarted
+        enabled: true
+
+    # Criar MOTD personalizado para usuário suporte
+    - name: Copiar /etc/profile.d/motd.sh para MOTD personalizado do usuário suporte
+      ansible.builtin.copy:
+        dest: /etc/profile.d/motd.sh
+        owner: root
+        group: root
+        mode: '0755'
+        content: |-
+          #!/bin/bash
+
+          # Verifica se o usuário é "suporte"
+          if [[ "$USER" == "suporte" ]]; then
+              hostname=$(echo "$HOSTNAME")
+              dominio=$(echo "$hostname" | tr '[:upper:]' '[:lower:]' | sed 's/^srv-//' | sed 's/-/./g')
+              dominio="${dominio}.com.br"
+
+              echo "===================================="
+              echo " 🖥️ Servidor: $(hostname)"
+              echo " 📅 Data: $(date)"
+              echo " ⏳ Uptime: $(uptime -p)"
+              echo " 📊 Usuários logados: $(who | wc -l)"
+              echo " 🌐 Espaço livre no disco: $(df -h / | tail -1 | awk '{print $4}')"
+              echo " 📦 Versão USCall: $(rpm -q uscall)"
+              echo " 🏷️ DNS: $dominio"
+              echo "===================================="
+
+    # Remover sngrep antigo e instalar nova versão
+    - name: Remover sngrep existente
+      package:
+        name: sngrep
+        state: absent
+
+    - name: Instalar o wget
+      package:
+        name: wget
+        state: present
+
+    - name: Criar diretório temporário para download
+      file:
+        path: /tmp/sngrep
+        state: directory
+        mode: '0755'
+
+    - name: Baixar o pacote sngrep via wget
+      get_url:
+        url: http://repo.iotti.biz/CentOS/8/x86_64/sngrep-1.7.0-0.el8.lux.x86_64.rpm
+        dest: /tmp/sngrep/sngrep-1.7.0-0.el8.lux.x86_64.rpm
+        mode: '0644'
+
+    - name: Instalar o pacote sngrep
+      command: rpm -ivh /tmp/sngrep/sngrep-1.7.0-0.el8.lux.x86_64.rpm
+
+    # Instalar open-vm-tools e reiniciar o host
+    - name: Install OPEN VM TOOLS PACKAGE
+      command: yum install open-vm-tools -y
+
+    - name: REBOOT AFTER INSTALL 
+      reboot:
+        reboot_timeout: 600
