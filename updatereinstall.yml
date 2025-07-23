@@ -1,0 +1,11 @@
+---
+- name: Atualizar e reinstalar pacote uscall
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Atualizar o pacote uscall
+      command: yum update uscall -y
+
+    - name: Reinstalar o pacote uscall
+      command: yum reinstall uscall -y
