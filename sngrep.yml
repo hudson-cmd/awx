@@ -1,9 +1,14 @@
 ---
-- name: Instalar wget e baixar sngrep via wget
+- name: Remover sngrep antigo e instalar nova versão
   hosts: all
   become: true
 
   tasks:
+    - name: Remover sngrep existente
+      package:
+        name: sngrep
+        state: absent
+
     - name: Instalar o wget
       package:
         name: wget
@@ -21,5 +26,6 @@
         dest: /tmp/sngrep/sngrep-1.7.0-0.el8.lux.x86_64.rpm
         mode: '0644'
 
-    - name: Instalar o pacote com rpm -ivh
-      command: rpm -ivh /tmp/sngrep/sngrep-1.7.0-0.el8.lux.x86_64.rpm
+    - name: Instalar o pacote sngrep
+      command: rpm -ivh /tmp/sngrep/sngrep-1.7.0-0.el8.lux.x86_64.rpm 
+
