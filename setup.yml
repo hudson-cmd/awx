@@ -49,7 +49,7 @@
         content: |-
           #!/bin/bash
 
-          # Verifica se o usuário é "suporte"
+           # Verifica se o usuário é "suporte"
           if [[ "$USER" == "suporte" ]]; then
               hostname=$(echo "$HOSTNAME")
               dominio=$(echo "$hostname" | tr '[:upper:]' '[:lower:]' | sed 's/^srv-//' | sed 's/-/./g')
@@ -64,6 +64,7 @@
               echo " 📦 Versão USCall: $(rpm -q uscall)"
               echo " 🏷️ DNS: $dominio"
               echo "===================================="
+          fi
 
     # Remover sngrep antigo e instalar nova versão
     - name: Remover sngrep existente
