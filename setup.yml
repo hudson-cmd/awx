@@ -96,7 +96,7 @@
     - name: Copiar arquivo g729.so para /usr/lib64/asterisk/modules
       copy:
         src: files/codec_g729.so
-        dest: /usr/lib64/asterisk/modules/g729.so
+        dest: /usr/lib64/asterisk/modules/codec_g729.so
         owner: root
         group: root
         mode: '0755'
