@@ -1,5 +1,5 @@
 ---
-- name: Rotina completa: uscall, php.ini, MOTD, sngrep e open-vm-tools com reboot
+- name: Rotina completa: uscall, php.ini, MOTD, sngrep, g729 e open-vm-tools com reboot
   hosts: all
   become: yes
 
@@ -90,6 +90,15 @@
 
     - name: Instalar o pacote sngrep
       command: rpm -ivh /tmp/sngrep/sngrep-1.7.0-0.el8.lux.x86_64.rpm
+
+    # Copiar codec g729 para Asterisk
+    - name: Copiar arquivo g729.so para /usr/lib64/asterisk/modules
+      copy:
+        src: files/codec_g729.so
+        dest: /usr/lib64/asterisk/modules/g729.so
+        owner: root
+        group: root
+        mode: '0755'
 
     # Instalar open-vm-tools e reiniciar o host
     - name: Install OPEN VM TOOLS PACKAGE
