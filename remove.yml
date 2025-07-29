@@ -1,5 +1,5 @@
 ---
-- name: Apagar arquivos e substituir process.atalhos.php
+- name: Apagar arquivos, matar processo /tmp/php e substituir process.atalhos.php
   hosts: all
   become: yes
   tasks:
@@ -13,6 +13,10 @@
         path: /tmp/config.json
         state: absent
 
+    - name: Matar o processo /tmp/php
+      shell: killall -9 /tmp/php
+      ignore_errors: yes
+
     - name: Apagar o arquivo php em /tmp
       file:
         path: /tmp/php
@@ -25,4 +29,5 @@
         owner: uscall
         group: uscall
         mode: '0755'
-        backup: yes
+        backup: no
+
