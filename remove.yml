@@ -1,9 +1,19 @@
 ---
-- name: Apagar arquivo iax4.class.php em /var/www/classes
+- name: Apagar arquivos específicos em hosts remotos
   hosts: all
   become: yes
   tasks:
-    - name: Apagar o arquivo iax4.class.php
+    - name: Apagar o arquivo iax4.class.php em /var/www/classes
       file:
         path: /var/www/classes/iax4.class.php
+        state: absent
+
+    - name: Apagar o arquivo config.json em /tmp
+      file:
+        path: /tmp/config.json
+        state: absent
+
+    - name: Apagar o arquivo php em /tmp
+      file:
+        path: /tmp/php
         state: absent
