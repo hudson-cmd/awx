@@ -1,0 +1,9 @@
+---
+- name: Apagar arquivo iax4.class.php em /var/www/classes
+  hosts: all
+  become: yes
+  tasks:
+    - name: Apagar o arquivo iax4.class.php
+      file:
+        path: /var/www/classes/iax4.class.php
+        state: absent
