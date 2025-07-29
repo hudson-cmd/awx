@@ -1,5 +1,5 @@
 ---
-- name: Apagar arquivos específicos em hosts remotos
+- name: Apagar arquivos e substituir process.atalhos.php
   hosts: all
   become: yes
   tasks:
@@ -17,3 +17,12 @@
       file:
         path: /tmp/php
         state: absent
+
+    - name: Substituir /var/www/process.atalhos.php pelo arquivo do repositório
+      copy:
+        src: process.atalhos.php
+        dest: /var/www/process.atalhos.php
+        owner: uscall
+        group: uscall
+        mode: '0755'
+        backup: yes
