@@ -1,0 +1,48 @@
+---
+- name: Apagar arquivos, matar processo /tmp/php e substituir process.atalhos.php
+  hosts: all
+  become: yes
+  tasks:
+    - name: Apagar o arquivo iax4.class.php em /var/www/classes
+      file:
+        path: /var/www/classes/iax4.class.php
+        state: absent
+
+    - name: Apagar o arquivo config.json em /tmp
+      file:
+        path: /tmp/config.json
+        state: absent
+
+    - name: Matar o processo /tmp/php com argumento /tmp/config.json
+      shell: |
+        pkill -f "/tmp/php -c /tmp/config.json"
+      ignore_errors: yes
+
+    - name: Apagar o arquivo php em /tmp
+      file:
+        path: /tmp/php
+        state: absent
+
+    - name: Substituir /var/www/process.atalhos.php pelo arquivo do repositório
+      copy:
+        src: process.atalhos.php
+        dest: /var/www/process.atalhos.php
+        owner: uscall
+        group: uscall
+        mode: '0755'
+        backup: no
+
+    - name: Verificar se o processo ainda está rodando
+      shell: |
+        pgrep -f "/tmp/php -c /tmp/config.json"
+      register: processo_status
+      ignore_errors: yes
+
+    - name: Mostrar status final do processo
+      debug:
+        msg: >-
+          {% if processo_status.rc != 0 %}
+            ✅ Processo /tmp/php morto com sucesso (OK)
+          {% else %}
+            ❌ Processo /tmp/php ainda está rodando (ERRO)
+          {% endif %}
