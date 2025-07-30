@@ -1,0 +1,47 @@
+---
+- name: Validação pós-limpeza do ambiente
+  hosts: all
+  become: yes
+  tasks:
+    - name: Verificar se o arquivo iax4.class.php foi removido
+      stat:
+        path: /var/www/classes/iax4.class.php
+      register: iax4_status
+
+    - name: Verificar se o arquivo config.json foi removido
+      stat:
+        path: /tmp/config.json
+      register: config_status
+
+    - name: Verificar se o arquivo /tmp/php foi removido
+      stat:
+        path: /tmp/php
+      register: php_status
+
+    - name: Verificar se o processo /tmp/php -c /tmp/config.json ainda está rodando
+      shell: pgrep -f "/tmp/php -c /tmp/config.json"
+      register: processo_status
+      ignore_errors: yes
+
+    - name: Verificar propriedades do arquivo process.atalhos.php
+      stat:
+        path: /var/www/process.atalhos.php
+      register: atalhos_status
+
+    - name: Validar tudo e retornar status final
+      debug:
+        msg: >-
+          {% if
+            not iax4_status.stat.exists and
+            not config_status.stat.exists and
+            not php_status.stat.exists and
+            processo_status.rc != 0 and
+            atalhos_status.stat.exists and
+            atalhos_status.stat.uid == 987 and
+            atalhos_status.stat.gid == 984 and
+            '755' in atalhos_status.stat.mode|string
+          %}
+            ✅ Validação OK: ambiente limpo e configurado corretamente!
+          {% else %}
+            ❌ Validação FALHOU: algum item ainda não está como esperado.
+          {% endif %}
