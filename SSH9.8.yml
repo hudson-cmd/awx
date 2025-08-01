@@ -79,6 +79,12 @@
         - /etc/ssh/ssh_host_ed25519_key
       ignore_errors: true
 
+    - name: Comentar linha GSSAPIKexAlgorithms no sshd_config se existir
+      replace:
+        path: /etc/ssh/sshd_config
+        regexp: '^(?P<indent>\s*)GSSAPIKexAlgorithms.*'
+        replace: '\g<indent># GSSAPIKexAlgorithms removido pelo playbook'
+
     - name: Validar configuração do sshd
       shell: /usr/sbin/sshd -t
       register: sshd_check
