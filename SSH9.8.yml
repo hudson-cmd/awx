@@ -38,10 +38,10 @@
       unarchive:
         src: "{{ src_dir }}/openssh-{{ openssh_version }}.tar.gz"
         dest: "{{ src_dir }}"
-        remote_src: true
+        remote_src: yes
 
     - name: Rodar configure
-      shell: ./configure --prefix=/usr --sysconfdir=/etc/ssh --with-md5-passwords --with-pam
+      shell: ./configure --prefix=/usr --sysconfdir=/etc/ssh --with-pam
       args:
         chdir: "{{ build_dir }}"
         creates: "{{ build_dir }}/Makefile"
@@ -62,6 +62,7 @@
         src: "{{ item.src }}"
         dest: "{{ item.dest }}"
         mode: '0755'
+        remote_src: yes
       loop:
         - { src: "{{ build_dir }}/ssh", dest: "/usr/bin/ssh" }
         - { src: "{{ build_dir }}/sshd", dest: "/usr/sbin/sshd" }
@@ -84,7 +85,7 @@
       failed_when: sshd_check.rc != 0
       changed_when: false
 
-    - name: Reiniciar sshd se estiver OK
+    - name: Reiniciar sshd se configuração OK
       systemd:
         name: sshd
         state: restarted
