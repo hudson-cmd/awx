@@ -16,7 +16,6 @@
           - make
           - wget
           - tar
-          - pam-devel
           - zlib-devel
           - openssl-devel
           - which
@@ -40,8 +39,8 @@
         dest: "{{ src_dir }}"
         remote_src: yes
 
-    - name: Rodar configure
-      shell: ./configure --prefix=/usr --sysconfdir=/etc/ssh --with-pam
+    - name: Rodar configure sem PAM
+      shell: ./configure --prefix=/usr --sysconfdir=/etc/ssh
       args:
         chdir: "{{ build_dir }}"
         creates: "{{ build_dir }}/Makefile"
@@ -84,6 +83,18 @@
         path: /etc/ssh/sshd_config
         regexp: '^(?P<indent>\s*)GSSAPIKexAlgorithms.*'
         replace: '\g<indent># GSSAPIKexAlgorithms removido pelo playbook'
+
+    - name: Comentar linha UsePAM no sshd_config se existir
+      replace:
+        path: /etc/ssh/sshd_config
+        regexp: '^(?P<indent>\s*)UsePAM\s+yes'
+        replace: '\g<indent># UsePAM desabilitado por segurança'
+
+    - name: Comentar GSSAPIAuthentication se existir
+      replace:
+        path: /etc/ssh/sshd_config
+        regexp: '^(?P<indent>\s*)GSSAPIAuthentication\s+yes'
+        replace: '\g<indent># GSSAPIAuthentication desabilitado'
 
     - name: Validar configuração do sshd
       shell: /usr/sbin/sshd -t
