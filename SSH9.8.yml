@@ -1,0 +1,94 @@
+---
+- name: Atualizar OpenSSH para 9.8p1 no Rocky Linux 8
+  hosts: all
+  become: true
+  vars:
+    openssh_version: "9.8p1"
+    openssh_url: "https://cdn.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-9.8p1.tar.gz"
+    install_dir: "/usr/local/src/openssh-src"
+
+  tasks:
+    - name: Instalar pacotes de compilação e dependências
+      dnf:
+        name:
+          - gcc
+          - make
+          - wget
+          - tar
+          - pam-devel
+          - zlib-devel
+          - openssl-devel
+          - which
+        state: present
+
+    - name: Criar diretório para código-fonte
+      file:
+        path: "{{ install_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Baixar código-fonte do OpenSSH
+      get_url:
+        url: "{{ openssh_url }}"
+        dest: "{{ install_dir }}/openssh-{{ openssh_version }}.tar.gz"
+
+    - name: Extrair código-fonte
+      unarchive:
+        src: "{{ install_dir }}/openssh-{{ openssh_version }}.tar.gz"
+        dest: "{{ install_dir }}"
+        remote_src: yes
+
+    - name: Backup do sshd atual
+      copy:
+        src: /usr/sbin/sshd
+        dest: /usr/sbin/sshd.bkp
+        remote_src: yes
+        mode: '0755'
+
+    - name: Backup do ssh atual
+      copy:
+        src: /usr/bin/ssh
+        dest: /usr/bin/ssh.bkp
+        remote_src: yes
+        mode: '0755'
+
+    - name: Compilar e instalar o OpenSSH
+      shell: |
+        cd {{ install_dir }}/openssh-{{ openssh_version }}
+        ./configure --prefix=/usr --sysconfdir=/etc/ssh --with-md5-passwords --with-pam
+        make -j$(nproc)
+        make install
+      args:
+        creates: "/usr/sbin/sshd"
+
+    - name: Corrigir permissões das chaves privadas do host
+      file:
+        path: "{{ item }}"
+        mode: '0600'
+      loop:
+        - /etc/ssh/ssh_host_rsa_key
+        - /etc/ssh/ssh_host_ecdsa_key
+        - /etc/ssh/ssh_host_ed25519_key
+      ignore_errors: yes
+
+    - name: Validar configuração do sshd
+      shell: /usr/sbin/sshd -t
+      register: sshd_check
+      failed_when: sshd_check.rc != 0
+      changed_when: false
+
+    - name: Reiniciar o sshd se configuração estiver OK
+      systemd:
+        name: sshd
+        state: restarted
+        enabled: true
+      when: sshd_check.rc == 0
+
+    - name: Mostrar versão final do OpenSSH
+      command: ssh -V
+      register: ssh_version
+      changed_when: false
+
+    - name: Exibir versão atual do SSH
+      debug:
+        msg: "Versão instalada: {{ ssh_version.stderr | default(ssh_version.stdout) }}"
