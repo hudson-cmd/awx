@@ -9,7 +9,7 @@
 
   tasks:
     - name: Instalar pacotes de compilação e dependências
-      dnf:
+      package:
         name:
           - gcc
           - make
