@@ -1,5 +1,5 @@
 ---
-- name: Atualizar OpenSSH para 9.8p1 via compilação
+- name: Atualizar OpenSSL e compilar OpenSSH 9.8p1 no Rocky Linux 8
   hosts: all
   become: true
   vars:
@@ -9,7 +9,31 @@
     openssh_url: "https://cdn.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-{{ openssh_version }}.tar.gz"
 
   tasks:
-    - name: Instalar dependências de build
+    - name: Atualizar todos os pacotes do sistema
+      package:
+        name: "*"
+        state: latest
+
+    - name: Instalar OpenSSL 1.1.1 e libs compat
+      package:
+        name:
+          - openssl
+          - openssl-devel
+          - openssl-libs
+          - compat-openssl11
+          - compat-openssl11-devel
+        state: present
+
+    - name: Verificar versão do OpenSSL após atualização
+      command: openssl version
+      register: openssl_ver
+      changed_when: false
+
+    - name: Mostrar versão do OpenSSL
+      debug:
+        msg: "OpenSSL instalado: {{ openssl_ver.stdout }}"
+
+    - name: Instalar dependências para compilação
       package:
         name:
           - gcc
@@ -18,11 +42,10 @@
           - tar
           - pam-devel
           - zlib-devel
-          - openssl-devel
           - which
         state: present
 
-    - name: Criar diretório de código-fonte
+    - name: Criar diretório para código-fonte
       file:
         path: "{{ src_dir }}"
         state: directory
@@ -38,10 +61,11 @@
       unarchive:
         src: "{{ src_dir }}/openssh-{{ openssh_version }}.tar.gz"
         dest: "{{ src_dir }}"
-        remote_src: true
+        remote_src: yes
 
-    - name: Rodar configure
-      shell: ./configure --prefix=/usr --sysconfdir=/etc/ssh --with-md5-passwords --with-pam
+    - name: Rodar configure apontando para openssl compat
+      shell: |
+        ./configure --prefix=/usr --sysconfdir=/etc/ssh --with-pam CPPFLAGS=-I/usr/include/openssl-compat LDFLAGS=-L/usr/lib64/openssl-compat
       args:
         chdir: "{{ build_dir }}"
         creates: "{{ build_dir }}/Makefile"
@@ -84,7 +108,7 @@
       failed_when: sshd_check.rc != 0
       changed_when: false
 
-    - name: Reiniciar sshd se estiver OK
+    - name: Reiniciar sshd se configuração OK
       systemd:
         name: sshd
         state: restarted
