@@ -1,14 +1,15 @@
 ---
-- name: Atualizar OpenSSH para 9.8p1 no Rocky Linux 8
+- name: Atualizar OpenSSH para 9.8p1 via compilação
   hosts: all
   become: true
   vars:
     openssh_version: "9.8p1"
-    openssh_url: "https://cdn.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-9.8p1.tar.gz"
-    install_dir: "/usr/local/src/openssh-src"
+    src_dir: "/usr/local/src/openssh-src"
+    build_dir: "{{ src_dir }}/openssh-{{ openssh_version }}"
+    openssh_url: "https://cdn.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-{{ openssh_version }}.tar.gz"
 
   tasks:
-    - name: Instalar pacotes de compilação e dependências
+    - name: Instalar dependências de build
       package:
         name:
           - gcc
@@ -21,55 +22,61 @@
           - which
         state: present
 
-    - name: Criar diretório para código-fonte
+    - name: Criar diretório de código-fonte
       file:
-        path: "{{ install_dir }}"
+        path: "{{ src_dir }}"
         state: directory
         mode: '0755'
 
     - name: Baixar código-fonte do OpenSSH
       get_url:
         url: "{{ openssh_url }}"
-        dest: "{{ install_dir }}/openssh-{{ openssh_version }}.tar.gz"
+        dest: "{{ src_dir }}/openssh-{{ openssh_version }}.tar.gz"
+        mode: '0644'
 
     - name: Extrair código-fonte
       unarchive:
-        src: "{{ install_dir }}/openssh-{{ openssh_version }}.tar.gz"
-        dest: "{{ install_dir }}"
-        remote_src: yes
+        src: "{{ src_dir }}/openssh-{{ openssh_version }}.tar.gz"
+        dest: "{{ src_dir }}"
+        remote_src: true
 
-    - name: Backup do sshd atual
-      copy:
-        src: /usr/sbin/sshd
-        dest: /usr/sbin/sshd.bkp
-        remote_src: yes
-        mode: '0755'
-
-    - name: Backup do ssh atual
-      copy:
-        src: /usr/bin/ssh
-        dest: /usr/bin/ssh.bkp
-        remote_src: yes
-        mode: '0755'
-
-    - name: Compilar e instalar o OpenSSH
-      shell: |
-        cd {{ install_dir }}/openssh-{{ openssh_version }}
-        ./configure --prefix=/usr --sysconfdir=/etc/ssh --with-md5-passwords --with-pam
-        make -j$(nproc)
-        make install
+    - name: Rodar configure
+      shell: ./configure --prefix=/usr --sysconfdir=/etc/ssh --with-md5-passwords --with-pam
       args:
-        creates: "/usr/sbin/sshd"
+        chdir: "{{ build_dir }}"
+        creates: "{{ build_dir }}/Makefile"
+
+    - name: Compilar OpenSSH
+      shell: make -j$(nproc)
+      args:
+        chdir: "{{ build_dir }}"
+        creates: "{{ build_dir }}/ssh"
+
+    - name: Fazer backup dos binários originais
+      shell: |
+        cp /usr/bin/ssh /usr/bin/ssh.bkp || true
+        cp /usr/sbin/sshd /usr/sbin/sshd.bkp || true
+
+    - name: Instalar binários compilados (forçado)
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        mode: '0755'
+      loop:
+        - { src: "{{ build_dir }}/ssh", dest: "/usr/bin/ssh" }
+        - { src: "{{ build_dir }}/sshd", dest: "/usr/sbin/sshd" }
 
     - name: Corrigir permissões das chaves privadas do host
       file:
         path: "{{ item }}"
         mode: '0600'
+        owner: root
+        group: root
       loop:
         - /etc/ssh/ssh_host_rsa_key
         - /etc/ssh/ssh_host_ecdsa_key
         - /etc/ssh/ssh_host_ed25519_key
-      ignore_errors: yes
+      ignore_errors: true
 
     - name: Validar configuração do sshd
       shell: /usr/sbin/sshd -t
@@ -77,18 +84,18 @@
       failed_when: sshd_check.rc != 0
       changed_when: false
 
-    - name: Reiniciar o sshd se configuração estiver OK
+    - name: Reiniciar sshd se estiver OK
       systemd:
         name: sshd
         state: restarted
         enabled: true
       when: sshd_check.rc == 0
 
-    - name: Mostrar versão final do OpenSSH
+    - name: Verificar versão final do ssh
       command: ssh -V
       register: ssh_version
       changed_when: false
 
-    - name: Exibir versão atual do SSH
+    - name: Exibir versão instalada
       debug:
-        msg: "Versão instalada: {{ ssh_version.stderr | default(ssh_version.stdout) }}"
+        msg: "Versão do OpenSSH instalada: {{ ssh_version.stderr | default(ssh_version.stdout) }}"
