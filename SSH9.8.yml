@@ -67,13 +67,15 @@
         - { src: "{{ build_dir }}/ssh", dest: "/usr/bin/ssh" }
         - { src: "{{ build_dir }}/sshd", dest: "/usr/sbin/sshd" }
 
-    - name: Criar binário dummy /usr/libexec/sshd-session para evitar erro
-      copy:
-        dest: /usr/libexec/sshd-session
-        content: |
-          #!/bin/bash
-          exec /bin/bash "$@"
-        mode: '0755'
+    - name: Verificar se /usr/libexec/sshd-session existe
+      stat:
+        path: /usr/libexec/sshd-session
+      register: sshd_session_file
+
+    - name: Avisar se /usr/libexec/sshd-session está faltando
+      debug:
+        msg: "ATENÇÃO: /usr/libexec/sshd-session não encontrado. A instalação pode estar incompleta."
+      when: not sshd_session_file.stat.exists
 
     - name: Corrigir permissões das chaves privadas do host
       file:
