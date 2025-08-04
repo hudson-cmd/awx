@@ -40,7 +40,8 @@
         remote_src: yes
 
     - name: Rodar configure (sem PAM e sem SessionExec)
-  shell: ./configure --prefix=/usr --sysconfdir=/etc/ssh --without-pam --without-session-exec
+      shell: |
+        ./configure --prefix=/usr --sysconfdir=/etc/ssh --without-pam --without-session-exec
       args:
         chdir: "{{ build_dir }}"
         creates: "{{ build_dir }}/Makefile"
@@ -102,6 +103,11 @@
         regexp: '-oGSSAPIKexAlgorithms=[^ ]* ?'
         replace: ''
       ignore_errors: true
+
+    - name: Remover binário sshd-session (caso exista)
+      file:
+        path: /usr/libexec/sshd-session
+        state: absent
 
     - name: Validar configuração do sshd
       shell: /usr/sbin/sshd -t
