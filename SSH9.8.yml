@@ -67,6 +67,14 @@
         - { src: "{{ build_dir }}/ssh", dest: "/usr/bin/ssh" }
         - { src: "{{ build_dir }}/sshd", dest: "/usr/sbin/sshd" }
 
+    - name: Criar binário dummy /usr/libexec/sshd-session para evitar erro
+      copy:
+        dest: /usr/libexec/sshd-session
+        content: |
+          #!/bin/bash
+          exec /bin/bash "$@"
+        mode: '0755'
+
     - name: Corrigir permissões das chaves privadas do host
       file:
         path: "{{ item }}"
@@ -103,11 +111,6 @@
         regexp: '-oGSSAPIKexAlgorithms=[^ ]* ?'
         replace: ''
       ignore_errors: true
-
-    - name: Remover binário sshd-session (caso exista)
-      file:
-        path: /usr/libexec/sshd-session
-        state: absent
 
     - name: Validar configuração do sshd
       shell: /usr/sbin/sshd -t
