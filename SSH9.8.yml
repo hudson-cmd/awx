@@ -39,8 +39,8 @@
         dest: "{{ src_dir }}"
         remote_src: yes
 
-    - name: Rodar configure (sem PAM)
-      shell: ./configure --prefix=/usr --sysconfdir=/etc/ssh
+    - name: Rodar configure (sem PAM e sem SessionExec)
+  shell: ./configure --prefix=/usr --sysconfdir=/etc/ssh --without-pam --without-session-exec
       args:
         chdir: "{{ build_dir }}"
         creates: "{{ build_dir }}/Makefile"
