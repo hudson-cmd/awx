@@ -1,5 +1,5 @@
 ---
-- name: Atualizar OpenSSH para 9.8p1 via compilação
+- name: Atualizar OpenSSH para 9.8p1 no Rocky Linux 8
   hosts: all
   become: true
   vars:
@@ -9,75 +9,53 @@
     openssh_url: "https://cdn.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-{{ openssh_version }}.tar.gz"
 
   tasks:
-    - name: Instalar dependências de build
-      package:
+
+    - name: Instalar dependências de compilação
+      dnf:
         name:
           - gcc
           - make
-          - wget
-          - tar
           - zlib-devel
           - openssl-devel
-          - which
+          - pam-devel
+          - wget
         state: present
 
-    - name: Criar diretório de código-fonte
+    - name: Criar diretório de fontes
       file:
         path: "{{ src_dir }}"
         state: directory
-        mode: '0755'
+        mode: 0755
 
-    - name: Baixar código-fonte do OpenSSH
+    - name: Baixar OpenSSH {{ openssh_version }}
       get_url:
         url: "{{ openssh_url }}"
         dest: "{{ src_dir }}/openssh-{{ openssh_version }}.tar.gz"
-        mode: '0644'
+        mode: 0644
 
-    - name: Extrair código-fonte
+    - name: Descompactar o código-fonte
       unarchive:
         src: "{{ src_dir }}/openssh-{{ openssh_version }}.tar.gz"
         dest: "{{ src_dir }}"
         remote_src: yes
 
-    - name: Rodar configure (sem PAM e sem SessionExec)
-      shell: |
-        ./configure --prefix=/usr --sysconfdir=/etc/ssh --without-pam --without-session-exec
+    - name: Configurar o OpenSSH
+      command: ./configure --prefix=/usr --sysconfdir=/etc/ssh --with-md5-passwords --with-pam
       args:
         chdir: "{{ build_dir }}"
-        creates: "{{ build_dir }}/Makefile"
 
-    - name: Compilar OpenSSH
-      shell: make -j$(nproc)
+    - name: Compilar o OpenSSH
+      command: make
       args:
         chdir: "{{ build_dir }}"
-        creates: "{{ build_dir }}/ssh"
 
-    - name: Fazer backup dos binários originais
-      shell: |
-        cp /usr/bin/ssh /usr/bin/ssh.bkp || true
-        cp /usr/sbin/sshd /usr/sbin/sshd.bkp || true
+    - name: Instalar o OpenSSH
+      command: make install
+      args:
+        chdir: "{{ build_dir }}"
+      notify: Reiniciar sshd
 
-    - name: Instalar binários compilados
-      copy:
-        src: "{{ item.src }}"
-        dest: "{{ item.dest }}"
-        mode: '0755'
-        remote_src: yes
-      loop:
-        - { src: "{{ build_dir }}/ssh", dest: "/usr/bin/ssh" }
-        - { src: "{{ build_dir }}/sshd", dest: "/usr/sbin/sshd" }
-
-    - name: Verificar se /usr/libexec/sshd-session existe
-      stat:
-        path: /usr/libexec/sshd-session
-      register: sshd_session_file
-
-    - name: Avisar se /usr/libexec/sshd-session está faltando
-      debug:
-        msg: "ATENÇÃO: /usr/libexec/sshd-session não encontrado. A instalação pode estar incompleta."
-      when: not sshd_session_file.stat.exists
-
-    - name: Corrigir permissões das chaves privadas do host
+    - name: Corrigir permissões das chaves privadas SSH
       file:
         path: "{{ item }}"
         mode: '0600'
@@ -87,51 +65,28 @@
         - /etc/ssh/ssh_host_rsa_key
         - /etc/ssh/ssh_host_ecdsa_key
         - /etc/ssh/ssh_host_ed25519_key
-      ignore_errors: true
+      notify: Reiniciar sshd
 
-    - name: Comentar linha GSSAPIKexAlgorithms no sshd_config se existir
-      replace:
-        path: /etc/ssh/sshd_config
-        regexp: '^(?P<indent>\s*)GSSAPIKexAlgorithms.*'
-        replace: '\g<indent># GSSAPIKexAlgorithms removido pelo playbook'
+    - name: Corrigir permissões das chaves públicas SSH
+      file:
+        path: "{{ item }}"
+        mode: '0644'
+        owner: root
+        group: root
+      loop:
+        - /etc/ssh/ssh_host_rsa_key.pub
+        - /etc/ssh/ssh_host_ecdsa_key.pub
+        - /etc/ssh/ssh_host_ed25519_key.pub
 
-    - name: Comentar linha UsePAM no sshd_config se existir
-      replace:
-        path: /etc/ssh/sshd_config
-        regexp: '^(?P<indent>\s*)UsePAM\s+yes'
-        replace: '\g<indent># UsePAM desabilitado por segurança'
-
-    - name: Comentar GSSAPIAuthentication se existir
-      replace:
-        path: /etc/ssh/sshd_config
-        regexp: '^(?P<indent>\s*)GSSAPIAuthentication\s+yes'
-        replace: '\g<indent># GSSAPIAuthentication desabilitado'
-
-    - name: Remover GSSAPIKexAlgorithms do opensshserver.config (crypto-policies)
+    - name: Remover parâmetro GSSAPIKexAlgorithms do opensshserver.config
       replace:
         path: /etc/crypto-policies/back-ends/opensshserver.config
-        regexp: '-oGSSAPIKexAlgorithms=[^ ]* ?'
+        regexp: '-oGSSAPIKexAlgorithms=[^ ]+'
         replace: ''
-      ignore_errors: true
+      notify: Reiniciar sshd
 
-    - name: Validar configuração do sshd
-      shell: /usr/sbin/sshd -t
-      register: sshd_check
-      failed_when: sshd_check.rc != 0
-      changed_when: false
-
-    - name: Reiniciar sshd se configuração OK
+  handlers:
+    - name: Reiniciar sshd
       systemd:
         name: sshd
         state: restarted
-        enabled: true
-      when: sshd_check.rc == 0
-
-    - name: Verificar versão final do ssh
-      command: ssh -V
-      register: ssh_version
-      changed_when: false
-
-    - name: Exibir versão instalada
-      debug:
-        msg: "Versão do OpenSSH instalada: {{ ssh_version.stderr | default(ssh_version.stdout) }}"
