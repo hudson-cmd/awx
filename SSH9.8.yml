@@ -39,7 +39,7 @@
         dest: "{{ src_dir }}"
         remote_src: yes
 
-    - name: Rodar configure sem PAM
+    - name: Rodar configure (sem PAM)
       shell: ./configure --prefix=/usr --sysconfdir=/etc/ssh
       args:
         chdir: "{{ build_dir }}"
@@ -56,7 +56,7 @@
         cp /usr/bin/ssh /usr/bin/ssh.bkp || true
         cp /usr/sbin/sshd /usr/sbin/sshd.bkp || true
 
-    - name: Instalar binários compilados (forçado)
+    - name: Instalar binários compilados
       copy:
         src: "{{ item.src }}"
         dest: "{{ item.dest }}"
@@ -78,13 +78,6 @@
         - /etc/ssh/ssh_host_ed25519_key
       ignore_errors: true
 
-    - name: Remover GSSAPIKexAlgorithms do opensshserver.config
-      replace:
-        path: /etc/crypto-policies/back-ends/opensshserver.config
-        regexp: '-oGSSAPIKexAlgorithms=[^ ]* ?'
-        replace: ''
-      notify: Reiniciar sshd
-
     - name: Comentar linha GSSAPIKexAlgorithms no sshd_config se existir
       replace:
         path: /etc/ssh/sshd_config
@@ -102,6 +95,13 @@
         path: /etc/ssh/sshd_config
         regexp: '^(?P<indent>\s*)GSSAPIAuthentication\s+yes'
         replace: '\g<indent># GSSAPIAuthentication desabilitado'
+
+    - name: Remover GSSAPIKexAlgorithms do opensshserver.config (crypto-policies)
+      replace:
+        path: /etc/crypto-policies/back-ends/opensshserver.config
+        regexp: '-oGSSAPIKexAlgorithms=[^ ]* ?'
+        replace: ''
+      ignore_errors: true
 
     - name: Validar configuração do sshd
       shell: /usr/sbin/sshd -t
@@ -124,19 +124,3 @@
     - name: Exibir versão instalada
       debug:
         msg: "Versão do OpenSSH instalada: {{ ssh_version.stderr | default(ssh_version.stdout) }}"
-
-  handlers:
-    - name: Reiniciar sshd
-      block:
-        - name: Validar configuração do sshd (handler)
-          shell: /usr/sbin/sshd -t
-          register: sshd_check_handler
-          failed_when: sshd_check_handler.rc != 0
-          changed_when: false
-
-        - name: Reiniciar sshd se configuração OK (handler)
-          systemd:
-            name: sshd
-            state: restarted
-            enabled: true
-          when: sshd_check_handler.rc == 0
