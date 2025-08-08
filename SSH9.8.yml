@@ -78,11 +78,18 @@
         - /etc/ssh/ssh_host_ecdsa_key.pub
         - /etc/ssh/ssh_host_ed25519_key.pub
 
-    - name: Remover parâmetro GSSAPIKexAlgorithms do opensshserver.config
-      replace:
-        path: /etc/crypto-policies/back-ends/opensshserver.config
-        regexp: '-oGSSAPIKexAlgorithms=[^ ]+'
-        replace: ''
+    - name: Remover linha GSSAPIKexAlgorithms do openssh.config
+      lineinfile:
+        path: /etc/crypto-policies/back-ends/openssh.config
+        regexp: '^GSSAPIKexAlgorithms.*'
+        state: absent
+      notify: Reiniciar sshd
+
+    - name: Remover diretiva GSSAPIAuthentication de 05-redhat.conf
+      lineinfile:
+        path: /etc/ssh/ssh_config.d/05-redhat.conf
+        regexp: '^\s*GSSAPIAuthentication\s+'
+        state: absent
       notify: Reiniciar sshd
 
   handlers:
