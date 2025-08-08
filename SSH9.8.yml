@@ -1,5 +1,5 @@
 ---
-- name: Instalar OpenSSH 9.8p1 com GSSAPI ativado no Rocky Linux 8
+- name: Instalar OpenSSH 9.8p1 no Rocky Linux 8
   hosts: all
   become: true
   vars:
