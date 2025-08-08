@@ -1,8 +1,7 @@
 ---
-- name: Atualizar OpenSSH para 9.8p1 via compilação (Ubuntu e Rocky)
+- name: Atualizar OpenSSH para 9.8p1 no Rocky Linux 8
   hosts: all
   become: true
-  gather_facts: true
   vars:
     openssh_version: "9.8p1"
     src_dir: "/usr/local/src/openssh-src"
@@ -10,20 +9,8 @@
     openssh_url: "https://cdn.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-{{ openssh_version }}.tar.gz"
 
   tasks:
-    - name: Instalar dependências no Ubuntu
-      apt:
-        name:
-          - build-essential
-          - zlib1g-dev
-          - libssl-dev
-          - libpam0g-dev
-          - wget
-          - tar
-        state: present
-        update_cache: yes
-      when: ansible_facts['os_family'] == "Debian"
 
-    - name: Instalar dependências no Rocky/CentOS/RHEL
+    - name: Instalar dependências de compilação
       dnf:
         name:
           - gcc
@@ -32,20 +19,19 @@
           - openssl-devel
           - pam-devel
           - wget
-          - tar
         state: present
-      when: ansible_facts['os_family'] == "RedHat"
 
     - name: Criar diretório de fontes
       file:
         path: "{{ src_dir }}"
         state: directory
-        mode: '0755'
+        mode: 0755
 
-    - name: Baixar código-fonte do OpenSSH
+    - name: Baixar OpenSSH {{ openssh_version }}
       get_url:
         url: "{{ openssh_url }}"
         dest: "{{ src_dir }}/openssh-{{ openssh_version }}.tar.gz"
+        mode: 0644
 
     - name: Descompactar o código-fonte
       unarchive:
@@ -53,18 +39,8 @@
         dest: "{{ src_dir }}"
         remote_src: yes
 
-    - name: Definir caminho do privsep dependendo da distro
-      set_fact:
-        privsep_path: "{{ '/var/run/sshd' if ansible_facts['os_family'] == 'Debian' else '/var/lib/sshd' }}"
-
-    - name: Configurar build
-      command: >
-        ./configure
-        --prefix=/usr
-        --sysconfdir=/etc/ssh
-        --with-md5-passwords
-        --with-pam
-        --with-privsep-path={{ privsep_path }}
+    - name: Configurar o OpenSSH
+      command: ./configure --prefix=/usr --sysconfdir=/etc/ssh --with-md5-passwords --with-pam
       args:
         chdir: "{{ build_dir }}"
 
@@ -77,33 +53,40 @@
       command: make install
       args:
         chdir: "{{ build_dir }}"
+      notify: Reiniciar sshd
 
-    - name: Criar diretório de privsep
+    - name: Corrigir permissões das chaves privadas SSH
       file:
-        path: "{{ privsep_path }}"
-        state: directory
+        path: "{{ item }}"
+        mode: '0600'
         owner: root
         group: root
-        mode: '0755'
+      loop:
+        - /etc/ssh/ssh_host_rsa_key
+        - /etc/ssh/ssh_host_ecdsa_key
+        - /etc/ssh/ssh_host_ed25519_key
+      notify: Reiniciar sshd
 
-    - name: Garantir que o UsePAM esteja configurado corretamente
-      lineinfile:
-        path: /etc/ssh/sshd_config
-        regexp: '^UsePAM'
-        line: 'UsePAM yes'
-        create: yes
-        state: present
+    - name: Corrigir permissões das chaves públicas SSH
+      file:
+        path: "{{ item }}"
+        mode: '0644'
+        owner: root
+        group: root
+      loop:
+        - /etc/ssh/ssh_host_rsa_key.pub
+        - /etc/ssh/ssh_host_ecdsa_key.pub
+        - /etc/ssh/ssh_host_ed25519_key.pub
 
-    - name: Reiniciar o serviço sshd (Ubuntu)
-      systemd:
-        name: ssh
-        state: restarted
-        enabled: yes
-      when: ansible_facts['os_family'] == "Debian"
+    - name: Remover parâmetro GSSAPIKexAlgorithms do opensshserver.config
+      replace:
+        path: /etc/crypto-policies/back-ends/opensshserver.config
+        regexp: '-oGSSAPIKexAlgorithms=[^ ]+'
+        replace: ''
+      notify: Reiniciar sshd
 
-    - name: Reiniciar o serviço sshd (Rocky)
+  handlers:
+    - name: Reiniciar sshd
       systemd:
         name: sshd
         state: restarted
-        enabled: yes
-      when: ansible_facts['os_family'] == "RedHat"
