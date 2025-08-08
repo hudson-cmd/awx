@@ -1,77 +1,90 @@
 ---
-- name: Instalação do OpenSSH 9.8p1 com suporte a GSSAPI
+- name: Instalar OpenSSH 9.8p1 com GSSAPI ativado no Rocky Linux 8
   hosts: all
-  become: yes
-
+  become: true
   vars:
-    openssh_version: "9.8p1"
-    openssh_tarball: "openssh-{{ openssh_version }}.tar.gz"
+    openssh_versao: "9.8p1"
+    openssh_src_dir: "/usr/local/src/openssh-{{ openssh_versao }}"
+    openssh_tarball: "openssh-{{ openssh_versao }}.tar.gz"
     openssh_url: "https://cdn.openbsd.org/pub/OpenBSD/OpenSSH/portable/{{ openssh_tarball }}"
-    openssh_dir: "/usr/local/src/openssh-{{ openssh_version }}"
 
   tasks:
-    - name: Instalar dependências de compilação
-      package:
+    - name: Instalar dependências
+      dnf:
         name:
           - gcc
           - make
+          - pam-devel
           - zlib-devel
           - openssl-devel
-          - pam-devel
           - krb5-devel
           - wget
         state: present
 
-    - name: Baixar o OpenSSH
+    - name: Baixar o OpenSSH {{ openssh_versao }}
       get_url:
         url: "{{ openssh_url }}"
         dest: "/usr/local/src/{{ openssh_tarball }}"
 
-    - name: Extrair o OpenSSH
+    - name: Extrair o código-fonte do OpenSSH
       unarchive:
         src: "/usr/local/src/{{ openssh_tarball }}"
-        dest: "/usr/local/src/"
+        dest: "/usr/local/src"
         remote_src: yes
 
-    - name: Configurar o OpenSSH com suporte ao GSSAPI
-      command: ./configure --prefix=/usr --sysconfdir=/etc/ssh --with-pam --with-kerberos5 --with-md5-passwords --with-ssl-engine
+    - name: Configurar a compilação com GSSAPI
+      command: ./configure --with-md5-passwords --with-kerberos5 --with-pam --with-gssapi
       args:
-        chdir: "{{ openssh_dir }}"
+        chdir: "{{ openssh_src_dir }}"
 
     - name: Compilar o OpenSSH
-      make:
-        chdir: "{{ openssh_dir }}"
+      command: make
+      args:
+        chdir: "{{ openssh_src_dir }}"
 
     - name: Instalar o OpenSSH
-      make:
-        chdir: "{{ openssh_dir }}"
-        target: install
+      command: make install
+      args:
+        chdir: "{{ openssh_src_dir }}"
 
-    - name: Garantir que o arquivo sshd_config existe
+    - name: Criar diretório do serviço SSH caso não exista
       file:
-        path: /etc/ssh/sshd_config
-        state: touch
+        path: /var/run/sshd
+        state: directory
+        mode: '0755'
 
-    - name: Configurar o sshd_config com suporte ao GSSAPI
+    - name: Garantir que o SSHD está configurado com GSSAPI
       blockinfile:
-        path: /etc/ssh/sshd_config
+        path: /usr/local/etc/sshd_config
         block: |
-          Protocol 2
-          PermitRootLogin yes
-          PasswordAuthentication yes
-          ChallengeResponseAuthentication no
-          UsePAM yes
           GSSAPIAuthentication yes
           GSSAPICleanupCredentials yes
           GSSAPIKeyExchange yes
-          GSSAPIKexAlgorithms gss-curve25519-sha256-,gss-nistp256-sha256-,gss-group14-sha256-,gss-group16-sha512-,gss-gex-sha1-,gss-group14-sha1-
-          UseDNS no
-          AllowTcpForwarding yes
-          X11Forwarding yes
-          Subsystem sftp /usr/libexec/sftp-server
+          PermitRootLogin yes
+          PasswordAuthentication yes
 
-    - name: Reiniciar o serviço SSH
+    - name: Criar serviço systemd do OpenSSH
+      copy:
+        dest: /etc/systemd/system/sshd-local.service
+        content: |
+          [Unit]
+          Description=OpenSSH Daemon Personalizado
+          After=network.target
+
+          [Service]
+          ExecStart=/usr/local/sbin/sshd -D
+          ExecReload=/bin/kill -HUP $MAINPID
+          KillMode=process
+          Restart=on-failure
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Recarregar systemd
+      command: systemctl daemon-reexec
+
+    - name: Ativar e iniciar serviço SSHD personalizado
       systemd:
-        name: sshd
+        name: sshd-local
+        enabled: true
         state: restarted
-        enabled: yes
