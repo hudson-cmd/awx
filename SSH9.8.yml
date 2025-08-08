@@ -18,6 +18,7 @@
           - zlib-devel
           - openssl-devel
           - pam-devel
+          - krb5-devel  # Necessário se quiser suporte ao GSSAPI/Kerberos
           - wget
         state: present
 
@@ -40,7 +41,7 @@
         remote_src: yes
 
     - name: Configurar o OpenSSH
-      command: ./configure --prefix=/usr --sysconfdir=/etc/ssh --with-md5-passwords --with-pam
+      command: ./configure --prefix=/usr --sysconfdir=/etc/ssh --with-md5-passwords --with-pam # --with-kerberos5
       args:
         chdir: "{{ build_dir }}"
 
@@ -78,14 +79,14 @@
         - /etc/ssh/ssh_host_ecdsa_key.pub
         - /etc/ssh/ssh_host_ed25519_key.pub
 
-    - name: Remover linha com GSSAPIKexAlgorithms do openssh.config
+    - name: Remover GSSAPIKexAlgorithms do openssh.config
       lineinfile:
         path: /etc/crypto-policies/back-ends/openssh.config
         regexp: '^GSSAPIKexAlgorithms'
         state: absent
       notify: Reiniciar sshd
 
-    - name: Remover linha com GSSAPIAuthentication do 05-redhat.conf
+    - name: Remover GSSAPIAuthentication do 05-redhat.conf
       lineinfile:
         path: /etc/ssh/ssh_config.d/05-redhat.conf
         regexp: '^GSSAPIAuthentication'
