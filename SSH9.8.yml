@@ -1,100 +1,77 @@
 ---
-- name: Atualizar OpenSSH para 9.8p1 no Rocky Linux 8
+- name: Instalação do OpenSSH 9.8p1 com suporte a GSSAPI
   hosts: all
-  become: true
+  become: yes
+
   vars:
     openssh_version: "9.8p1"
-    src_dir: "/usr/local/src/openssh-src"
-    build_dir: "{{ src_dir }}/openssh-{{ openssh_version }}"
-    openssh_url: "https://cdn.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-{{ openssh_version }}.tar.gz"
+    openssh_tarball: "openssh-{{ openssh_version }}.tar.gz"
+    openssh_url: "https://cdn.openbsd.org/pub/OpenBSD/OpenSSH/portable/{{ openssh_tarball }}"
+    openssh_dir: "/usr/local/src/openssh-{{ openssh_version }}"
 
   tasks:
-
     - name: Instalar dependências de compilação
-      dnf:
+      package:
         name:
           - gcc
           - make
           - zlib-devel
           - openssl-devel
           - pam-devel
-          - krb5-devel  # Necessário se quiser suporte ao GSSAPI/Kerberos
+          - krb5-devel
           - wget
         state: present
 
-    - name: Criar diretório de fontes
-      file:
-        path: "{{ src_dir }}"
-        state: directory
-        mode: 0755
-
-    - name: Baixar OpenSSH {{ openssh_version }}
+    - name: Baixar o OpenSSH
       get_url:
         url: "{{ openssh_url }}"
-        dest: "{{ src_dir }}/openssh-{{ openssh_version }}.tar.gz"
-        mode: 0644
+        dest: "/usr/local/src/{{ openssh_tarball }}"
 
-    - name: Descompactar o código-fonte
+    - name: Extrair o OpenSSH
       unarchive:
-        src: "{{ src_dir }}/openssh-{{ openssh_version }}.tar.gz"
-        dest: "{{ src_dir }}"
+        src: "/usr/local/src/{{ openssh_tarball }}"
+        dest: "/usr/local/src/"
         remote_src: yes
 
-    - name: Configurar o OpenSSH
-      command: ./configure --prefix=/usr --sysconfdir=/etc/ssh --with-md5-passwords --with-pam # --with-kerberos5
+    - name: Configurar o OpenSSH com suporte ao GSSAPI
+      command: ./configure --prefix=/usr --sysconfdir=/etc/ssh --with-pam --with-kerberos5 --with-md5-passwords --with-ssl-engine
       args:
-        chdir: "{{ build_dir }}"
+        chdir: "{{ openssh_dir }}"
 
     - name: Compilar o OpenSSH
-      command: make
-      args:
-        chdir: "{{ build_dir }}"
+      make:
+        chdir: "{{ openssh_dir }}"
 
     - name: Instalar o OpenSSH
-      command: make install
-      args:
-        chdir: "{{ build_dir }}"
-      notify: Reiniciar sshd
+      make:
+        chdir: "{{ openssh_dir }}"
+        target: install
 
-    - name: Corrigir permissões das chaves privadas SSH
+    - name: Garantir que o arquivo sshd_config existe
       file:
-        path: "{{ item }}"
-        mode: '0600'
-        owner: root
-        group: root
-      loop:
-        - /etc/ssh/ssh_host_rsa_key
-        - /etc/ssh/ssh_host_ecdsa_key
-        - /etc/ssh/ssh_host_ed25519_key
-      notify: Reiniciar sshd
+        path: /etc/ssh/sshd_config
+        state: touch
 
-    - name: Corrigir permissões das chaves públicas SSH
-      file:
-        path: "{{ item }}"
-        mode: '0644'
-        owner: root
-        group: root
-      loop:
-        - /etc/ssh/ssh_host_rsa_key.pub
-        - /etc/ssh/ssh_host_ecdsa_key.pub
-        - /etc/ssh/ssh_host_ed25519_key.pub
+    - name: Configurar o sshd_config com suporte ao GSSAPI
+      blockinfile:
+        path: /etc/ssh/sshd_config
+        block: |
+          Protocol 2
+          PermitRootLogin yes
+          PasswordAuthentication yes
+          ChallengeResponseAuthentication no
+          UsePAM yes
+          GSSAPIAuthentication yes
+          GSSAPICleanupCredentials yes
+          GSSAPIKeyExchange yes
+          GSSAPIKexAlgorithms gss-curve25519-sha256-,gss-nistp256-sha256-,gss-group14-sha256-,gss-group16-sha512-,gss-gex-sha1-,gss-group14-sha1-
+          UseDNS no
+          AllowTcpForwarding yes
+          X11Forwarding yes
+          Subsystem sftp /usr/libexec/sftp-server
 
-    - name: Remover GSSAPIKexAlgorithms do openssh.config
-      lineinfile:
-        path: /etc/crypto-policies/back-ends/openssh.config
-        regexp: '^GSSAPIKexAlgorithms'
-        state: absent
-      notify: Reiniciar sshd
-
-    - name: Remover GSSAPIAuthentication do 05-redhat.conf
-      lineinfile:
-        path: /etc/ssh/ssh_config.d/05-redhat.conf
-        regexp: '^GSSAPIAuthentication'
-        state: absent
-      notify: Reiniciar sshd
-
-  handlers:
-    - name: Reiniciar sshd
+    - name: Reiniciar o serviço SSH
       systemd:
         name: sshd
         state: restarted
+        enabled: yes
