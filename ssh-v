@@ -1,0 +1,13 @@
+---
+- name: Mostrar versão do OpenSSH
+  hosts: all
+  gather_facts: no
+  tasks:
+    - name: Obter versão do OpenSSH
+      ansible.builtin.shell: ssh -V 2>&1
+      register: ssh_version
+      changed_when: false
+
+    - name: Exibir versão do OpenSSH
+      ansible.builtin.debug:
+        msg: "Host {{ inventory_hostname }} -> {{ ssh_version.stdout }}"
