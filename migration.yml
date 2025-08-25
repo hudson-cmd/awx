@@ -7,3 +7,9 @@
         src: files/wizard.sh
         dest: /tmp/wizard.sh
         mode: '0755'
+
+    - name: Copiar records.sh para o host
+      copy:
+        src: files/records.sh
+        dest: /tmp/records.sh
+        mode: '0644'
