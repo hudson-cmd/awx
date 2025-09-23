@@ -12,7 +12,6 @@ DESTINO="/home/suporte/backup_envio"
 CERT_DIR="/etc/pki/tls"
 REDE_DIR="/etc/sysconfig/network-scripts"
 BACKUP_DIR="/var/uscallbackup"
-CODEC_PATH="/usr/lib64/asterisk/modules/codec_g729.so"
 LOGFILE="/var/log/wizard_envio.log"
 ARQUIVO_TAR="/home/suporte/backup_envio.tar.gz"
 
@@ -60,14 +59,6 @@ echo -e "${CYAN}[+] Copiando certificados SSL...${NC}"
 cp "$CERT_DIR/certs/localhost.crt" "$DESTINO/" 2>/dev/null
 cp "$CERT_DIR/private/localhost.key" "$DESTINO/" 2>/dev/null
 echo -e "${GREEN}[✓] Certificados copiados${NC}"
-
-# Copia codec G.729
-if [ -f "$CODEC_PATH" ]; then
-    cp "$CODEC_PATH" "$DESTINO/"
-    echo -e "${GREEN}[✓] Codec G.729 copiado${NC}"
-else
-    echo -e "${YELLOW}[!] Codec G.729 não encontrado${NC}"
-fi
 
 # Opção para compactar os arquivos
 echo -e "${CYAN}[?] Deseja compactar os arquivos em .tar.gz antes do envio? (s/n)${NC}"
