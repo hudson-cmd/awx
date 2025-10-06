@@ -1,37 +1,11 @@
 ---
-- name: Instalar e emitir certificado Let's Encrypt automaticamente
+- name: Gerar certificado Let's Encrypt
   hosts: all
   become: yes
-
-  vars:
-    email_certbot: "hudson.amaral@uniontelecom.com.br"
-    dominio: "{{ lookup('pipe', 'cat /etc/hostname | sed \"s/-/./g\"') }}.com.br"
-
   tasks:
-
-    - name: Garantir que o EPEL está instalado
-      ansible.builtin.yum:
-        name: epel-release
-        state: present
-
-    - name: Instalar Certbot e plugin do Nginx
-      ansible.builtin.yum:
-        name:
-          - certbot
-          - python3-certbot-nginx
-        state: present
-
-    - name: Emitir certificado Let's Encrypt
-      ansible.builtin.command:
-        cmd: >
-          certbot --nginx
-          -d {{ dominio }}
-          --email {{ email_certbot }}
-          --agree-tos
-          --non-interactive
-      register: certbot_result
-      changed_when: "'Congratulations' in certbot_result.stdout"
-
-    - name: Mostrar saída do Certbot
-      ansible.builtin.debug:
-        var: certbot_result.stdout
+    - name: Executar comando certbot completo
+      shell: |
+        DOMINIO=$(cat /etc/hostname | sed 's/-/./g').com.br
+        sudo certbot --nginx -d $DOMINIO --email cerficados@uniontelecom.com.br --agree-tos --non-interactive
+      args:
+        warn: false
