@@ -6,6 +6,4 @@
     - name: Executar comando certbot completo
       shell: |
         DOMINIO=$(cat /etc/hostname | sed 's/-/./g').com.br
-        sudo certbot --nginx -d $DOMINIO --email cerficados@uniontelecom.com.br --agree-tos --non-interactive
-      args:
-        warn: false
+        sudo certbot --nginx -d $DOMINIO --email hudson.amaral@uniontelecom.com.br --agree-tos --non-interactive
