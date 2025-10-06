@@ -4,7 +4,7 @@
   become: yes
 
   vars:
-    email_certbot: "hudson.amaral@uniontelecom.com.br"
+    email_certbot: "certificados@uniontelecom.com.br"
     dominio: "{{ lookup('pipe', 'cat /etc/hostname | sed \"s/-/./g\"') }}.com.br"
 
   tasks:
