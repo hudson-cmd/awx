@@ -1,0 +1,76 @@
+---
+- name: Gerar e aplicar certificado Let's Encrypt no Asterisk
+  hosts: all
+  become: yes
+  vars:
+    dominio_base: ".com.br"
+    lets_dir: "/etc/letsencrypt"
+    asterisk_http_conf: "/etc/asterisk/http.conf"
+    asterisk_pjsip_conf: "/etc/asterisk/pjsip_transport.conf"
+
+  tasks:
+    - name: Instalar dependências
+      dnf:
+        name:
+          - epel-release
+          - certbot
+          - python3-certbot-nginx
+        state: present
+
+    - name: Definir domínio baseado no hostname
+      set_fact:
+        dominio: "{{ ansible_hostname | replace('-', '.') }}{{ dominio_base }}"
+
+    - name: Gerar certificado Let's Encrypt
+      command:
+        cmd: >
+          certbot --nginx
+          -d {{ dominio }}
+          --email certificados@uniontelecom.com.br
+          --agree-tos
+          --non-interactive
+      args:
+        creates: "{{ lets_dir }}/live/{{ dominio }}/fullchain.pem"
+
+    # --- Atualização do http.conf ---
+    - name: Atualizar caminho do certificado no http.conf
+      lineinfile:
+        path: "{{ asterisk_http_conf }}"
+        regexp: '^tlscertfile='
+        line: "tlscertfile={{ lets_dir }}/live/{{ dominio }}/fullchain.pem"
+        backup: yes
+
+    - name: Atualizar caminho da chave no http.conf
+      lineinfile:
+        path: "{{ asterisk_http_conf }}"
+        regexp: '^tlsprivatekey='
+        line: "tlsprivatekey={{ lets_dir }}/live/{{ dominio }}/privkey.pem"
+        backup: yes
+
+    # --- Atualização do pjsip_transport.conf ---
+    - name: Atualizar caminho do certificado no pjsip_transport.conf
+      lineinfile:
+        path: "{{ asterisk_pjsip_conf }}"
+        regexp: '^cert_file='
+        line: "cert_file={{ lets_dir }}/live/{{ dominio }}/fullchain.pem"
+        backup: yes
+
+    - name: Atualizar caminho da chave no pjsip_transport.conf
+      lineinfile:
+        path: "{{ asterisk_pjsip_conf }}"
+        regexp: '^priv_key_file='
+        line: "priv_key_file={{ lets_dir }}/live/{{ dominio }}/privkey.pem"
+        backup: yes
+
+    - name: Configurar cron para renovação automática
+      cron:
+        name: "Renovar certificados Let's Encrypt"
+        job: "certbot renew --quiet && systemctl reload nginx && systemctl restart asterisk"
+        hour: 3
+        minute: 0
+        user: root
+
+    - name: Reiniciar Asterisk
+      systemd:
+        name: asterisk
+        state: restarted
