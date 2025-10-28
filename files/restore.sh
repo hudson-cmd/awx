@@ -18,10 +18,6 @@ fi
 echo "[+] Restaurando arquivos de rede para /etc/sysconfig/network-scripts/"
 cp -f "$ORIGEM"/ifcfg-* "$ORIGEM"/route-* /etc/sysconfig/network-scripts/ 2>/dev/null
 
-echo "[+] Substituindo certificados em /etc/nginx/certs/localhost/"
-mkdir -p /etc/nginx/certs/localhost/
-cp -f "$ORIGEM"/localhost.crt /etc/nginx/certs/localhost/ 2>/dev/null
-cp -f "$ORIGEM"/localhost.key /etc/nginx/certs/localhost/ 2>/dev/null
 
 echo "[+] Movendo arquivos de backup para /var/uscallbackup/"
 mkdir -p /var/uscallbackup/
