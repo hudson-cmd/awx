@@ -17,9 +17,9 @@
           - python3-certbot-nginx
         state: present
 
-    - name: Definir domínio baseado no hostname
+    - name: Definir domínio baseado no hostname (minúsculo)
       set_fact:
-        dominio: "{{ ansible_hostname | replace('-', '.') }}{{ dominio_base }}"
+        dominio: "{{ (ansible_hostname | replace('-', '.')) | lower }}{{ dominio_base }}"
 
     - name: Gerar certificado Let's Encrypt
       command:
