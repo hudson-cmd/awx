@@ -11,10 +11,6 @@
       ansible.builtin.shell: |
         cp -f {{ origem }}/ifcfg-* {{ origem }}/route-* /etc/sysconfig/network-scripts/ 2>/dev/null
 
-    - name: Copiar certificados SSL
-      ansible.builtin.shell: |
-        cp -f {{ origem }}/localhost.crt /etc/nginx/certs/localhost/ 2>/dev/null
-        cp -f {{ origem }}/localhost.key /etc/nginx/certs/localhost/ 2>/dev/null
 
     - name: Copiar arquivos de backup (.tar.gz)
       ansible.builtin.shell: |
