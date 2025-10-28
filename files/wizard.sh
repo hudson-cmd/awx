@@ -9,11 +9,9 @@ NC='\033[0m'
 
 # Caminhos
 DESTINO="/home/suporte/backup_envio"
-CERT_DIR="/etc/pki/tls"
 REDE_DIR="/etc/sysconfig/network-scripts"
 BACKUP_DIR="/var/uscallbackup"
 LOGFILE="/var/log/wizard_envio.log"
-ARQUIVO_TAR="/home/suporte/backup_envio.tar.gz"
 
 # Início do log
 mkdir -p "$(dirname "$LOGFILE")"
@@ -54,24 +52,6 @@ cp $REDE_DIR/ifcfg-* "$DESTINO/" 2>/dev/null
 cp $REDE_DIR/route-* "$DESTINO/" 2>/dev/null
 echo -e "${GREEN}[✓] Arquivos de rede copiados${NC}"
 
-# Copia certificados SSL
-echo -e "${CYAN}[+] Copiando certificados SSL...${NC}"
-cp "$CERT_DIR/certs/localhost.crt" "$DESTINO/" 2>/dev/null
-cp "$CERT_DIR/private/localhost.key" "$DESTINO/" 2>/dev/null
-echo -e "${GREEN}[✓] Certificados copiados${NC}"
-
-# Opção para compactar os arquivos
-echo -e "${CYAN}[?] Deseja compactar os arquivos em .tar.gz antes do envio? (s/n)${NC}"
-read -r COMPACTAR
-
-if [[ "$COMPACTAR" =~ ^[sS]$ ]]; then
-    tar -czf "$ARQUIVO_TAR" -C "$(dirname "$DESTINO")" "$(basename "$DESTINO")"
-    echo -e "${GREEN}[✓] Arquivos compactados em: $ARQUIVO_TAR${NC}"
-    ENVIO_PATH="$ARQUIVO_TAR"
-else
-    ENVIO_PATH="$DESTINO"
-fi
-
 # Solicita dados de envio
 echo -e "${CYAN}[→] Digite os dados para envio SCP:${NC}"
 read -p "IP de destino: " IP
@@ -91,12 +71,12 @@ else
 fi
 
 # Confirma envio
-echo -e "${CYAN}[?] Confirmar envio para $USUARIO@$IP:/home/$USUARIO/? (s/n)${NC}"
+echo -e "${CYAN}[?] Confirmar envio da pasta $DESTINO para $USUARIO@$IP:/home/$USUARIO/? (s/n)${NC}"
 read -r CONFIRMA
 
 if [[ "$CONFIRMA" =~ ^[sS]$ ]]; then
     echo -e "${CYAN}[→] Enviando arquivos via SCP...${NC}"
-    sshpass -p "$SENHA" scp -P 8222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -r "$ENVIO_PATH" "$USUARIO@$IP:/home/$USUARIO/"
+    sshpass -p "$SENHA" scp -P 8222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -r "$DESTINO" "$USUARIO@$IP:/home/$USUARIO/"
 
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}[✓] Envio concluído com sucesso!${NC}"
