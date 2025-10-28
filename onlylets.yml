@@ -1,0 +1,20 @@
+- name: Gerar certificado Let's Encrypt
+  hosts: all
+  become: yes
+  tasks:
+    - name: Instalar repositório EPEL
+      dnf:
+        name: epel-release
+        state: present
+
+    - name: Instalar Certbot e plugin Nginx
+      dnf:
+        name:
+          - certbot
+          - python3-certbot-nginx
+        state: present
+
+    - name: Executar comando Certbot completo
+      shell: |
+        DOMINIO=$(cat /etc/hostname | sed 's/-/./g').com.br
+        certbot --nginx -d $DOMINIO --email certificados@uniontelecom.com.br --agree-tos --non-interactive
