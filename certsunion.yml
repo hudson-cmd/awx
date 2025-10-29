@@ -1,0 +1,57 @@
+---
+- name: Emitir certificados Let's Encrypt para todos os sites Nginx
+  hosts: all
+  become: yes
+
+  vars:
+    email_cert: "certificados@uniontelecom.com.br"
+    nginx_sites_path: "/etc/nginx/sites-enabled"
+    log_path: "/var/log/certbot-renew.log"
+
+  tasks:
+    - name: Instalar dependências necessárias
+      apt:
+        name:
+          - software-properties-common
+          - certbot
+          - python3-certbot-nginx
+        state: present
+        update_cache: yes
+
+    - name: Obter lista de domínios configurados no Nginx (exceto default-site)
+      shell: |
+        grep -Rh "server_name" {{ nginx_sites_path }} \
+        | grep -v "default-site" \
+        | awk '{for (i=2;i<=NF;i++) print $i}' \
+        | sed 's/;//' \
+        | sort -u
+      register: dominios
+
+    - name: Mostrar lista de domínios encontrados
+      debug:
+        var: dominios.stdout_lines
+
+    - name: Emitir certificados Let's Encrypt via Nginx para cada domínio
+      loop: "{{ dominios.stdout_lines }}"
+      shell: |
+        echo "==== [$(date)] Emitindo certificado para {{ item }} ====" >> {{ log_path }}
+        certbot --nginx -d {{ item }} \
+          --email {{ email_cert }} \
+          --agree-tos \
+          --non-interactive \
+          --redirect >> {{ log_path }} 2>&1
+      args:
+        warn: false
+
+    - name: Recarregar Nginx após emissão dos certificados
+      service:
+        name: nginx
+        state: reloaded
+
+    - name: Exibir log final do processo
+      shell: tail -n 20 {{ log_path }}
+      register: log_saida
+      ignore_errors: true
+
+    - debug:
+        msg: "{{ log_saida.stdout_lines | default('Sem log gerado ainda.') }}"
