@@ -1,4 +1,3 @@
----
 - name: Emitir certificados Let's Encrypt para todos os sites Nginx
   hosts: all
   become: yes
@@ -40,8 +39,6 @@
           --agree-tos \
           --non-interactive \
           --redirect >> {{ log_path }} 2>&1
-      args:
-        warn: false
 
     - name: Recarregar Nginx após emissão dos certificados
       service:
