@@ -33,7 +33,7 @@
 
     - name: Emitir certificados Let's Encrypt via Nginx para cada domínio
       loop: "{{ dominios.stdout_lines }}"
-      shell: |
+      ansible.builtin.shell: |
         echo "==== [$(date)] Emitindo certificado para {{ item }} ====" >> {{ log_path }}
         certbot --nginx -d {{ item }} \
           --email {{ email_cert }} \
