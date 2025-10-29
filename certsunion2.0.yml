@@ -1,14 +1,34 @@
-- name: Emitir certificados Let's Encrypt para sites Nginx (www + sem-www) apenas se necessário
+- name: Emitir certificados Let's Encrypt para múltiplos domínios (www + sem-www)
   hosts: all
   become: yes
 
   vars:
     email_cert: "certificados@uniontelecom.com.br"
-    nginx_sites_path: "/etc/nginx/sites-enabled"
     log_path: "/var/log/certbot-renew.log"
+    dominios:
+      - asttecom.com.br
+      - atatelecom.com.br
+      - ativador.uscall.com.br
+      - comercial.uniontelecom.com.br
+      - leads.nuvemfone.com.br
+      - leads.uniontel.com.br
+      - leads.uniontelecom.com.br
+      - leads.uscall.com.br
+      - negocios.uniontelecom.com.br
+      - omnichan.uscall.com.br
+      - portaldev.uniontelecom.com.br
+      - portal.uniontelecom.com.br
+      - unionfone.com.br
+      - uniontel.com.br
+      - virtualportsistemas.com.br
+      - virtualport.uniontelecom.com.br
+      - webphone.uscall.com.br
+      - wiki.uniontelecom.com.br
+      - www.uniontelecom.com.br
+      - www.uscall.com.br
 
   tasks:
-    - name: Instalar dependências necessárias
+    - name: Instalar dependências do Certbot
       apt:
         name:
           - software-properties-common
@@ -17,43 +37,22 @@
         state: present
         update_cache: yes
 
-    - name: Obter lista de domínios configurados no Nginx (exceto default-site)
-      shell: |
-        grep -Rh "server_name" {{ nginx_sites_path }} \
-        | grep -v "default-site" \
-        | awk '{for (i=2;i<=NF;i++) print $i}' \
-        | sed 's/;//' \
-        | sort -u
-      register: dominios
-
-    - name: Filtrar apenas domínios principais (remover www.)
-      set_fact:
-        dominios_principais: "{{ dominios.stdout_lines | map('regex_replace', '^www\\.', '') | list | unique }}"
-
-    - name: Mostrar lista de domínios principais
-      debug:
-        var: dominios_principais
-
-    - name: Emitir certificados Let's Encrypt via Nginx apenas se não existir
-      loop: "{{ dominios_principais }}"
+    - name: Emitir certificados para cada domínio (com e sem www)
+      loop: "{{ dominios }}"
       ansible.builtin.shell: |
-        if ! certbot certificates | grep -q 'Domains: {{ item }}, www.{{ item }}'; then
-          echo "==== [$(date)] Emitindo certificado para {{ item }} e www.{{ item }} ====" >> {{ log_path }}
-          certbot --nginx -d {{ item }} -d www.{{ item }} \
-            --email {{ email_cert }} \
-            --agree-tos \
-            --non-interactive \
-            --redirect >> {{ log_path }} 2>&1
-        else
-          echo "==== [$(date)] Certificado para {{ item }} e www.{{ item }} já existe, pulando." >> {{ log_path }}
-        fi
+        DOM_SEM_WWW=$(echo {{ item }} | sed 's/^www\.//')
+        echo "==== [$(date)] Emitindo certificado para $DOM_SEM_WWW e www.$DOM_SEM_WWW ====" >> {{ log_path }}
+        certbot --nginx -d $DOM_SEM_WWW -d www.$DOM_SEM_WWW \
+          --email {{ email_cert }} \
+          --agree-tos --non-interactive --redirect --expand >> {{ log_path }} 2>&1
+      ignore_errors: yes
 
     - name: Recarregar Nginx após emissão dos certificados
       service:
         name: nginx
         state: reloaded
 
-    - name: Exibir log final do processo
+    - name: Exibir últimas linhas do log
       shell: tail -n 20 {{ log_path }}
       register: log_saida
       ignore_errors: true
