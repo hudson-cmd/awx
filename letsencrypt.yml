@@ -1,4 +1,3 @@
----
 - name: Gerar e aplicar certificado Let's Encrypt no Asterisk
   hosts: all
   become: yes
@@ -32,6 +31,13 @@
       args:
         creates: "{{ lets_dir }}/live/{{ dominio }}/fullchain.pem"
 
+    - name: Ajustar permissões da pasta Let's Encrypt
+      file:
+        path: "{{ lets_dir }}"
+        owner: uscall
+        group: uscall
+        recurse: yes
+
     # --- Atualização do http.conf ---
     - name: Atualizar caminho do certificado no http.conf
       lineinfile:
@@ -47,20 +53,26 @@
         line: "tlsprivatekey={{ lets_dir }}/live/{{ dominio }}/privkey.pem"
         backup: yes
 
-    # --- Atualização do pjsip_transport.conf ---
-    - name: Atualizar caminho do certificado no pjsip_transport.conf
-      lineinfile:
+    # --- Atualização dos blocos tls e tls6 no pjsip_transport.conf ---
+    - name: Atualizar caminhos do bloco [tls]
+      blockinfile:
         path: "{{ asterisk_pjsip_conf }}"
-        regexp: '^cert_file='
-        line: "cert_file={{ lets_dir }}/live/{{ dominio }}/fullchain.pem"
-        backup: yes
+        marker: "# {mark} ANSIBLE TLS"
+        insertafter: '^\[tls\]'
+        block: |
+          cert_file={{ lets_dir }}/live/{{ dominio }}/fullchain.pem
+          priv_key_file={{ lets_dir }}/live/{{ dominio }}/privkey.pem
+      backup: yes
 
-    - name: Atualizar caminho da chave no pjsip_transport.conf
-      lineinfile:
+    - name: Atualizar caminhos do bloco [tls6]
+      blockinfile:
         path: "{{ asterisk_pjsip_conf }}"
-        regexp: '^priv_key_file='
-        line: "priv_key_file={{ lets_dir }}/live/{{ dominio }}/privkey.pem"
-        backup: yes
+        marker: "# {mark} ANSIBLE TLS6"
+        insertafter: '^\[tls6\]'
+        block: |
+          cert_file={{ lets_dir }}/live/{{ dominio }}/fullchain.pem
+          priv_key_file={{ lets_dir }}/live/{{ dominio }}/privkey.pem
+      backup: yes
 
     - name: Configurar cron para renovação automática
       cron:
