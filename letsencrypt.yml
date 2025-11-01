@@ -44,35 +44,41 @@
         path: "{{ asterisk_http_conf }}"
         regexp: '^tlscertfile='
         line: "tlscertfile={{ lets_dir }}/live/{{ dominio }}/fullchain.pem"
-        backup: yes
 
     - name: Atualizar caminho da chave no http.conf
       lineinfile:
         path: "{{ asterisk_http_conf }}"
         regexp: '^tlsprivatekey='
         line: "tlsprivatekey={{ lets_dir }}/live/{{ dominio }}/privkey.pem"
-        backup: yes
 
-    # --- Atualização dos blocos tls e tls6 no pjsip_transport.conf ---
-    - name: Atualizar caminhos do bloco [tls]
-      blockinfile:
+    # --- Atualização dos campos cert_file e priv_key_file nas seções [tls] e [tls6] ---
+    - name: Garantir cert_file em [tls]
+      ini_file:
         path: "{{ asterisk_pjsip_conf }}"
-        marker: "# {mark} ANSIBLE TLS"
-        insertafter: '^\[tls\]'
-        backup: yes
-        block: |
-          cert_file={{ lets_dir }}/live/{{ dominio }}/fullchain.pem
-          priv_key_file={{ lets_dir }}/live/{{ dominio }}/privkey.pem
+        section: tls
+        option: cert_file
+        value: "{{ lets_dir }}/live/{{ dominio }}/fullchain.pem"
 
-    - name: Atualizar caminhos do bloco [tls6]
-      blockinfile:
+    - name: Garantir priv_key_file em [tls]
+      ini_file:
         path: "{{ asterisk_pjsip_conf }}"
-        marker: "# {mark} ANSIBLE TLS6"
-        insertafter: '^\[tls6\]'
-        backup: yes
-        block: |
-          cert_file={{ lets_dir }}/live/{{ dominio }}/fullchain.pem
-          priv_key_file={{ lets_dir }}/live/{{ dominio }}/privkey.pem
+        section: tls
+        option: priv_key_file
+        value: "{{ lets_dir }}/live/{{ dominio }}/privkey.pem"
+
+    - name: Garantir cert_file em [tls6]
+      ini_file:
+        path: "{{ asterisk_pjsip_conf }}"
+        section: tls6
+        option: cert_file
+        value: "{{ lets_dir }}/live/{{ dominio }}/fullchain.pem"
+
+    - name: Garantir priv_key_file em [tls6]
+      ini_file:
+        path: "{{ asterisk_pjsip_conf }}"
+        section: tls6
+        option: priv_key_file
+        value: "{{ lets_dir }}/live/{{ dominio }}/privkey.pem"
 
     - name: Configurar cron para renovação automática
       cron:
