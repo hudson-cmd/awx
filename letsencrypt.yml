@@ -59,20 +59,20 @@
         path: "{{ asterisk_pjsip_conf }}"
         marker: "# {mark} ANSIBLE TLS"
         insertafter: '^\[tls\]'
+        backup: yes
         block: |
           cert_file={{ lets_dir }}/live/{{ dominio }}/fullchain.pem
           priv_key_file={{ lets_dir }}/live/{{ dominio }}/privkey.pem
-      backup: yes
 
     - name: Atualizar caminhos do bloco [tls6]
       blockinfile:
         path: "{{ asterisk_pjsip_conf }}"
         marker: "# {mark} ANSIBLE TLS6"
         insertafter: '^\[tls6\]'
+        backup: yes
         block: |
           cert_file={{ lets_dir }}/live/{{ dominio }}/fullchain.pem
           priv_key_file={{ lets_dir }}/live/{{ dominio }}/privkey.pem
-      backup: yes
 
     - name: Configurar cron para renovação automática
       cron:
