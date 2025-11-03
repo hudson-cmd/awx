@@ -51,26 +51,25 @@
         regexp: '^tlsprivatekey='
         line: "tlsprivatekey={{ lets_dir }}/live/{{ dominio }}/privkey.pem"
 
-    # --- Atualização do bloco [tls] ---
-    - name: Atualizar certificados em [tls]
-      replace:
+    # --- Atualização da seção [tls] ---
+    - name: Atualizar certificados na seção [tls]
+      blockinfile:
         path: "{{ asterisk_pjsip_conf }}"
-        after: '^\[tls\]'
-        before: '^\[tls6\]'
-        regexp: '(?m)^(cert_file=.*|priv_key_file=.*)$'
-        replace: |
+        insertafter: '^\[tls\]'
+        block: |
           cert_file={{ lets_dir }}/live/{{ dominio }}/fullchain.pem
           priv_key_file={{ lets_dir }}/live/{{ dominio }}/privkey.pem
+      marker: ""
 
-    # --- Atualização do bloco [tls6] ---
-    - name: Atualizar certificados em [tls6]
-      replace:
+    # --- Atualização da seção [tls6] ---
+    - name: Atualizar certificados na seção [tls6]
+      blockinfile:
         path: "{{ asterisk_pjsip_conf }}"
-        after: '^\[tls6\]'
-        regexp: '(?m)^(cert_file=.*|priv_key_file=.*)$'
-        replace: |
+        insertafter: '^\[tls6\]'
+        block: |
           cert_file={{ lets_dir }}/live/{{ dominio }}/fullchain.pem
           priv_key_file={{ lets_dir }}/live/{{ dominio }}/privkey.pem
+      marker: ""
 
     # --- Configuração do cron para renovação automática ---
     - name: Configurar cron para renovação automática
