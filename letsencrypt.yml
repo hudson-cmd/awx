@@ -9,7 +9,7 @@
 
   tasks:
     - name: Instalar dependências
-      dnf:
+      ansible.builtin.dnf:
         name:
           - epel-release
           - certbot
@@ -17,11 +17,11 @@
         state: present
 
     - name: Definir domínio baseado no hostname (minúsculo)
-      set_fact:
+      ansible.builtin.set_fact:
         dominio: "{{ (ansible_hostname | replace('-', '.')) | lower }}{{ dominio_base }}"
 
     - name: Gerar certificado Let's Encrypt
-      command:
+      ansible.builtin.command:
         cmd: >
           certbot --nginx
           -d {{ dominio }}
@@ -32,7 +32,7 @@
         creates: "{{ lets_dir }}/live/{{ dominio }}/fullchain.pem"
 
     - name: Ajustar permissões da pasta Let's Encrypt
-      file:
+      ansible.builtin.file:
         path: "{{ lets_dir }}"
         owner: uscall
         group: uscall
@@ -40,48 +40,48 @@
 
     # --- Atualização do http.conf ---
     - name: Atualizar caminho do certificado no http.conf
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: "{{ asterisk_http_conf }}"
         regexp: '^tlscertfile='
         line: "tlscertfile={{ lets_dir }}/live/{{ dominio }}/fullchain.pem"
 
     - name: Atualizar caminho da chave no http.conf
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: "{{ asterisk_http_conf }}"
         regexp: '^tlsprivatekey='
         line: "tlsprivatekey={{ lets_dir }}/live/{{ dominio }}/privkey.pem"
 
     # --- Atualização dos campos cert_file e priv_key_file nas seções [tls] e [tls6] ---
     - name: Garantir cert_file em [tls]
-      ini_file:
+      ansible.builtin.ini_file:
         path: "{{ asterisk_pjsip_conf }}"
-        section: tls
-        option: cert_file
+        section: "tls"
+        option: "cert_file"
         value: "{{ lets_dir }}/live/{{ dominio }}/fullchain.pem"
 
     - name: Garantir priv_key_file em [tls]
-      ini_file:
+      ansible.builtin.ini_file:
         path: "{{ asterisk_pjsip_conf }}"
-        section: tls
-        option: priv_key_file
+        section: "tls"
+        option: "priv_key_file"
         value: "{{ lets_dir }}/live/{{ dominio }}/privkey.pem"
 
     - name: Garantir cert_file em [tls6]
-      ini_file:
+      ansible.builtin.ini_file:
         path: "{{ asterisk_pjsip_conf }}"
-        section: tls6
-        option: cert_file
+        section: "tls6"
+        option: "cert_file"
         value: "{{ lets_dir }}/live/{{ dominio }}/fullchain.pem"
 
     - name: Garantir priv_key_file em [tls6]
-      ini_file:
+      ansible.builtin.ini_file:
         path: "{{ asterisk_pjsip_conf }}"
-        section: tls6
-        option: priv_key_file
+        section: "tls6"
+        option: "priv_key_file"
         value: "{{ lets_dir }}/live/{{ dominio }}/privkey.pem"
 
     - name: Configurar cron para renovação automática
-      cron:
+      ansible.builtin.cron:
         name: "Renovar certificados Let's Encrypt"
         job: "certbot renew --quiet && systemctl reload nginx && systemctl restart asterisk"
         hour: 3
@@ -89,6 +89,6 @@
         user: root
 
     - name: Reiniciar Asterisk
-      systemd:
+      ansible.builtin.systemd:
         name: asterisk
         state: restarted
