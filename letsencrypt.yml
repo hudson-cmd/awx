@@ -56,30 +56,35 @@
       lineinfile:
         path: "{{ asterisk_pjsip_conf }}"
         insertafter: '^\[tls\]'
-        regexp: '^cert_file='
+        regexp: '^(cert_file=)'
         line: "cert_file={{ lets_dir }}/live/{{ dominio }}/fullchain.pem"
+        firstmatch: yes
 
     - name: Garantir priv_key_file em [tls]
       lineinfile:
         path: "{{ asterisk_pjsip_conf }}"
         insertafter: '^\[tls\]'
-        regexp: '^priv_key_file='
+        regexp: '^(priv_key_file=)'
         line: "priv_key_file={{ lets_dir }}/live/{{ dominio }}/privkey.pem"
+        firstmatch: yes
 
     - name: Garantir cert_file em [tls6]
       lineinfile:
         path: "{{ asterisk_pjsip_conf }}"
         insertafter: '^\[tls6\]'
-        regexp: '^cert_file='
+        regexp: '^(cert_file=)'
         line: "cert_file={{ lets_dir }}/live/{{ dominio }}/fullchain.pem"
+        firstmatch: yes
 
     - name: Garantir priv_key_file em [tls6]
       lineinfile:
         path: "{{ asterisk_pjsip_conf }}"
         insertafter: '^\[tls6\]'
-        regexp: '^priv_key_file='
+        regexp: '^(priv_key_file=)'
         line: "priv_key_file={{ lets_dir }}/live/{{ dominio }}/privkey.pem"
+        firstmatch: yes
 
+    # --- Configuração do cron para renovação automática ---
     - name: Configurar cron para renovação automática
       cron:
         name: "Renovar certificados Let's Encrypt"
@@ -88,6 +93,7 @@
         minute: 0
         user: root
 
+    # --- Reiniciar o Asterisk ---
     - name: Reiniciar Asterisk
       systemd:
         name: asterisk
