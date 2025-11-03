@@ -53,32 +53,32 @@
 
     # --- Atualização dos campos cert_file e priv_key_file nas seções [tls] e [tls6] ---
     - name: Garantir cert_file em [tls]
-      ini_file:
+      lineinfile:
         path: "{{ asterisk_pjsip_conf }}"
-        section: "tls"
-        option: "cert_file"
-        value: "{{ lets_dir }}/live/{{ dominio }}/fullchain.pem"
+        insertafter: '^\[tls\]'
+        regexp: '^cert_file='
+        line: "cert_file={{ lets_dir }}/live/{{ dominio }}/fullchain.pem"
 
     - name: Garantir priv_key_file em [tls]
-      ini_file:
+      lineinfile:
         path: "{{ asterisk_pjsip_conf }}"
-        section: "tls"
-        option: "priv_key_file"
-        value: "{{ lets_dir }}/live/{{ dominio }}/privkey.pem"
+        insertafter: '^\[tls\]'
+        regexp: '^priv_key_file='
+        line: "priv_key_file={{ lets_dir }}/live/{{ dominio }}/privkey.pem"
 
     - name: Garantir cert_file em [tls6]
-      ini_file:
+      lineinfile:
         path: "{{ asterisk_pjsip_conf }}"
-        section: "tls6"
-        option: "cert_file"
-        value: "{{ lets_dir }}/live/{{ dominio }}/fullchain.pem"
+        insertafter: '^\[tls6\]'
+        regexp: '^cert_file='
+        line: "cert_file={{ lets_dir }}/live/{{ dominio }}/fullchain.pem"
 
     - name: Garantir priv_key_file em [tls6]
-      ini_file:
+      lineinfile:
         path: "{{ asterisk_pjsip_conf }}"
-        section: "tls6"
-        option: "priv_key_file"
-        value: "{{ lets_dir }}/live/{{ dominio }}/privkey.pem"
+        insertafter: '^\[tls6\]'
+        regexp: '^priv_key_file='
+        line: "priv_key_file={{ lets_dir }}/live/{{ dominio }}/privkey.pem"
 
     - name: Configurar cron para renovação automática
       cron:
