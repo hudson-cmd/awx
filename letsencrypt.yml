@@ -59,7 +59,7 @@
         block: |
           cert_file={{ lets_dir }}/live/{{ dominio }}/fullchain.pem
           priv_key_file={{ lets_dir }}/live/{{ dominio }}/privkey.pem
-      marker: ""
+        marker: "# {mark} TLS section"
 
     # --- Atualização da seção [tls6] ---
     - name: Atualizar certificados na seção [tls6]
@@ -69,7 +69,7 @@
         block: |
           cert_file={{ lets_dir }}/live/{{ dominio }}/fullchain.pem
           priv_key_file={{ lets_dir }}/live/{{ dominio }}/privkey.pem
-      marker: ""
+        marker: "# {mark} TLS6 section"
 
     # --- Configuração do cron para renovação automática ---
     - name: Configurar cron para renovação automática
