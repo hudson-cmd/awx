@@ -6,9 +6,10 @@
     lets_dir: "/etc/letsencrypt"
     asterisk_http_conf: "/etc/asterisk/http.conf"
     asterisk_pjsip_conf: "/etc/asterisk/pjsip_transport.conf"
+    cert_email: "certificados@uniontelecom.com.br"
 
   tasks:
-    - name: Instalar dependências
+    - name: Instalar dependências necessárias
       dnf:
         name:
           - epel-release
@@ -20,14 +21,13 @@
       set_fact:
         dominio: "{{ (ansible_hostname | replace('-', '.')) | lower }}{{ dominio_base }}"
 
-    - name: Gerar certificado Let's Encrypt
-      command:
-        cmd: >
-          certbot --nginx
-          -d {{ dominio }}
-          --email certificados@uniontelecom.com.br
-          --agree-tos
-          --non-interactive
+    - name: Gerar certificado Let's Encrypt com Nginx
+      command: >
+        certbot --nginx
+        -d {{ dominio }}
+        --email {{ cert_email }}
+        --agree-tos
+        --non-interactive
       args:
         creates: "{{ lets_dir }}/live/{{ dominio }}/fullchain.pem"
 
@@ -44,6 +44,7 @@
         path: "{{ asterisk_http_conf }}"
         regexp: '^tlscertfile='
         line: "tlscertfile={{ lets_dir }}/live/{{ dominio }}/fullchain.pem"
+        backup: yes
 
     - name: Atualizar caminho da chave no http.conf
       lineinfile:
@@ -55,28 +56,29 @@
     - name: Atualizar cert_file em [tls]
       replace:
         path: "{{ asterisk_pjsip_conf }}"
-        regexp: '(?<=^\[tls\][\s\S]*?cert_file=).*'
-        replace: "{{ lets_dir }}/live/{{ dominio }}/fullchain.pem"
+        regexp: '(^\[tls\][\s\S]*?cert_file=).*'
+        replace: '\1{{ lets_dir }}/live/{{ dominio }}/fullchain.pem'
+        backup: yes
 
     - name: Atualizar priv_key_file em [tls]
       replace:
         path: "{{ asterisk_pjsip_conf }}"
-        regexp: '(?<=^\[tls\][\s\S]*?priv_key_file=).*'
-        replace: "{{ lets_dir }}/live/{{ dominio }}/privkey.pem"
+        regexp: '(^\[tls\][\s\S]*?priv_key_file=).*'
+        replace: '\1{{ lets_dir }}/live/{{ dominio }}/privkey.pem'
 
     - name: Atualizar cert_file em [tls6]
       replace:
         path: "{{ asterisk_pjsip_conf }}"
-        regexp: '(?<=^\[tls6\][\s\S]*?cert_file=).*'
-        replace: "{{ lets_dir }}/live/{{ dominio }}/fullchain.pem"
+        regexp: '(^\[tls6\][\s\S]*?cert_file=).*'
+        replace: '\1{{ lets_dir }}/live/{{ dominio }}/fullchain.pem'
 
     - name: Atualizar priv_key_file em [tls6]
       replace:
         path: "{{ asterisk_pjsip_conf }}"
-        regexp: '(?<=^\[tls6\][\s\S]*?priv_key_file=).*'
-        replace: "{{ lets_dir }}/live/{{ dominio }}/privkey.pem"
+        regexp: '(^\[tls6\][\s\S]*?priv_key_file=).*'
+        replace: '\1{{ lets_dir }}/live/{{ dominio }}/privkey.pem'
 
-    # --- Configuração do cron para renovação automática ---
+    # --- Renovação automática via cron ---
     - name: Configurar cron para renovação automática
       cron:
         name: "Renovar certificados Let's Encrypt"
@@ -85,8 +87,5 @@
         minute: 0
         user: root
 
-    # --- Reiniciar o Asterisk ---
-    - name: Reiniciar Asterisk
-      systemd:
-        name: asterisk
-        state: restarted
+    # --- Reiniciar Asterisk ---
+    - na
