@@ -57,26 +57,26 @@
       replace:
         path: "{{ asterisk_pjsip_conf }}"
         regexp: '(^\[tls\][\s\S]*?cert_file=).*'
-        replace: '\1{{ lets_dir }}/live/{{ dominio }}/fullchain.pem'
+        replace: "\\1{{ lets_dir }}/live/{{ dominio }}/fullchain.pem"
         backup: yes
 
     - name: Atualizar priv_key_file em [tls]
       replace:
         path: "{{ asterisk_pjsip_conf }}"
         regexp: '(^\[tls\][\s\S]*?priv_key_file=).*'
-        replace: '\1{{ lets_dir }}/live/{{ dominio }}/privkey.pem'
+        replace: "\\1{{ lets_dir }}/live/{{ dominio }}/privkey.pem"
 
     - name: Atualizar cert_file em [tls6]
       replace:
         path: "{{ asterisk_pjsip_conf }}"
         regexp: '(^\[tls6\][\s\S]*?cert_file=).*'
-        replace: '\1{{ lets_dir }}/live/{{ dominio }}/fullchain.pem'
+        replace: "\\1{{ lets_dir }}/live/{{ dominio }}/fullchain.pem"
 
     - name: Atualizar priv_key_file em [tls6]
       replace:
         path: "{{ asterisk_pjsip_conf }}"
         regexp: '(^\[tls6\][\s\S]*?priv_key_file=).*'
-        replace: '\1{{ lets_dir }}/live/{{ dominio }}/privkey.pem'
+        replace: "\\1{{ lets_dir }}/live/{{ dominio }}/privkey.pem"
 
     # --- Renovação automática via cron ---
     - name: Configurar cron para renovação automática
@@ -88,4 +88,7 @@
         user: root
 
     # --- Reiniciar Asterisk ---
-    - na
+    - name: Reiniciar Asterisk
+      service:
+        name: asterisk
+        state: restarted
