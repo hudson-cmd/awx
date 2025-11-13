@@ -6,8 +6,6 @@
   vars:
     conf_file: "/etc/asterisk/pjsip_transport.conf"
     db_name: "asterisk"
-    db_user: "root"
-    db_pass: "SENHA_DO_MYSQL"
 
   tasks:
 
@@ -25,18 +23,18 @@
         key_path: "{{ key_line.stdout.split('=')[1] | trim }}"
 
     - name: Atualizar cert_file no banco
-      community.mysql.mysql_query:
-        login_user: "{{ db_user }}"
-        login_password: "{{ db_pass }}"
-        login_db: "{{ db_name }}"
-        query: "UPDATE pjsip_configs SET value='{{ cert_path }}' WHERE field='cert_file';"
+      command: >
+        mysql -u {{ lookup('env', 'DB_USER') }}
+        -p{{ lookup('env', 'DB_PASSWORD') }}
+        -D {{ db_name }}
+        -e "UPDATE pjsip_configs SET value='{{ cert_path }}' WHERE field='cert_file';"
 
     - name: Atualizar priv_key_file no banco
-      community.mysql.mysql_query:
-        login_user: "{{ db_user }}"
-        login_password: "{{ db_pass }}"
-        login_db: "{{ db_name }}"
-        query: "UPDATE pjsip_configs SET value='{{ key_path }}' WHERE field='priv_key_file';"
+      command: >
+        mysql -u {{ lookup('env', 'DB_USER') }}
+        -p{{ lookup('env', 'DB_PASSWORD') }}
+        -D {{ db_name }}
+        -e "UPDATE pjsip_configs SET value='{{ key_path }}' WHERE field='priv_key_file';"
 
     - name: Exibir resultado
       debug:
