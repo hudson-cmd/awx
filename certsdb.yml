@@ -9,7 +9,6 @@
 
   tasks:
 
-    # 1. Ler linhas de cert_file e priv_key_file do arquivo de transporte
     - name: Ler valor do cert_file
       command: "grep '^cert_file' {{ conf_file }}"
       register: cert_line
@@ -18,49 +17,75 @@
       command: "grep '^priv_key_file' {{ conf_file }}"
       register: key_line
 
-    # 2. Extrair apenas o caminho (tudo após o "=")
     - name: Extrair caminhos
       set_fact:
         cert_path: "{{ cert_line.stdout.split('=')[1] | trim }}"
         key_path: "{{ key_line.stdout.split('=')[1] | trim }}"
 
-    # 3. Remover duplicatas na tabela para manter apenas o grupo 'transport'
-    - name: Remover duplicatas de cert_file
+    # 1️⃣ REMOVER QUALQUER cert_file SEM GROUP
+    - name: Remover cert_file com group NULL
       command: >
         mysql -u {{ lookup('env', 'DB_USER') }}
         -p{{ lookup('env', 'DB_PASSWORD') }}
         -D {{ db_name }}
-        -e "DELETE FROM pjsip_configs
-            WHERE field='cert_file' AND (`group` IS NULL OR `group`!='transport');"
+        -e "
+          DELETE FROM pjsip_configs
+          WHERE field='cert_file'
+            AND (`group` IS NULL OR TRIM(`group`)='');"
 
-    - name: Remover duplicatas de priv_key_file
+    # 1️⃣ REMOVER QUALQUER priv_key_file SEM GROUP
+    - name: Remover priv_key_file com group NULL
       command: >
         mysql -u {{ lookup('env', 'DB_USER') }}
         -p{{ lookup('env', 'DB_PASSWORD') }}
         -D {{ db_name }}
-        -e "DELETE FROM pjsip_configs
-            WHERE field='priv_key_file' AND (`group` IS NULL OR `group`!='transport');"
+        -e "
+          DELETE FROM pjsip_configs
+          WHERE field='priv_key_file'
+            AND (`group` IS NULL OR TRIM(`group`)='');"
 
-    # 4. Atualizar apenas o registro correto (field + group)
-    - name: Atualizar cert_file correto
+    # 2️⃣ GARANTIR QUE A LINHA CERTA EXISTE
+    - name: Criar cert_file se não existir
       command: >
         mysql -u {{ lookup('env', 'DB_USER') }}
         -p{{ lookup('env', 'DB_PASSWORD') }}
         -D {{ db_name }}
-        -e "UPDATE pjsip_configs SET value='{{ cert_path }}'
-            WHERE field='cert_file' AND `group`='transport';"
+        -e "
+          INSERT IGNORE INTO pjsip_configs (field, value, `group`)
+          VALUES ('cert_file', '', 'transport');"
 
-    - name: Atualizar priv_key_file correto
+    - name: Criar priv_key_file se não existir
       command: >
         mysql -u {{ lookup('env', 'DB_USER') }}
         -p{{ lookup('env', 'DB_PASSWORD') }}
         -D {{ db_name }}
-        -e "UPDATE pjsip_configs SET value='{{ key_path }}'
-            WHERE field='priv_key_file' AND `group`='transport';"
+        -e "
+          INSERT IGNORE INTO pjsip_configs (field, value, `group`)
+          VALUES ('priv_key_file', '', 'transport');"
 
-    # 5. Exibir resultado
+    # 3️⃣ NOW update the correct ones
+    - name: Atualizar cert_file
+      command: >
+        mysql -u {{ lookup('env', 'DB_USER') }}
+        -p{{ lookup('env', 'DB_PASSWORD') }}
+        -D {{ db_name }}
+        -e "
+          UPDATE pjsip_configs
+          SET value='{{ cert_path }}'
+          WHERE field='cert_file' AND `group`='transport';"
+
+    - name: Atualizar priv_key_file
+      command: >
+        mysql -u {{ lookup('env', 'DB_USER') }}
+        -p{{ lookup('env', 'DB_PASSWORD') }}
+        -D {{ db_name }}
+        -e "
+          UPDATE pjsip_configs
+          SET value='{{ key_path }}'
+          WHERE field='priv_key_file' AND `group`='transport';"
+
     - name: Exibir resultado
       debug:
         msg:
-          - "cert_file atualizado para: {{ cert_path }}"
-          - "priv_key_file atualizado para: {{ key_path }}"
+          - "cert_file => {{ cert_path }}"
+          - "priv_key_file => {{ key_path }}"
