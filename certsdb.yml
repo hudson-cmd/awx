@@ -2,17 +2,21 @@
 - name: Sincronizar certificados TLS do Asterisk
   hosts: asterisk
   become: true
+
   vars:
     conf_file: "/etc/asterisk/pjsip_transport.conf"
     db_name: "asterisk"
+    db_user: "root"
+    db_pass: "SENHA_DO_MYSQL"
 
   tasks:
+
     - name: Ler valor do cert_file
-      command: grep "^cert_file" {{ conf_file }}
+      command: "grep '^cert_file' {{ conf_file }}"
       register: cert_line
 
     - name: Ler valor do priv_key_file
-      command: grep "^priv_key_file" {{ conf_file }}
+      command: "grep '^priv_key_file' {{ conf_file }}"
       register: key_line
 
     - name: Extrair caminhos
@@ -22,20 +26,20 @@
 
     - name: Atualizar cert_file no banco
       community.mysql.mysql_query:
-        login_user: "{{ ansible_user }}"
-        login_password: "{{ ansible_password }}"
+        login_user: "{{ db_user }}"
+        login_password: "{{ db_pass }}"
         login_db: "{{ db_name }}"
         query: "UPDATE pjsip_configs SET value='{{ cert_path }}' WHERE field='cert_file';"
 
     - name: Atualizar priv_key_file no banco
       community.mysql.mysql_query:
-        login_user: "{{ ansible_user }}"
-        login_password: "{{ ansible_password }}"
+        login_user: "{{ db_user }}"
+        login_password: "{{ db_pass }}"
         login_db: "{{ db_name }}"
         query: "UPDATE pjsip_configs SET value='{{ key_path }}' WHERE field='priv_key_file';"
 
     - name: Exibir resultado
       debug:
         msg:
-          - "✅ cert_file atualizado: {{ cert_path }}"
-          - "✅ priv_key_file atualizado: {{ key_path }}"
+          - "cert_file atualizado: {{ cert_path }}"
+          - "priv_key_file atualizado: {{ key_path }}"
