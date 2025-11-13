@@ -1,5 +1,5 @@
 ---
-- name: Sincronizar certificados TLS do Asterisk
+- name: Atualizar certificados TLS do Asterisk (dinâmico por servidor)
   hosts: all
   become: true
 
@@ -9,62 +9,20 @@
 
   tasks:
 
-    - name: Ler valor do cert_file
+    - name: Ler cert_file local
       command: "grep '^cert_file' {{ conf_file }}"
       register: cert_line
 
-    - name: Ler valor do priv_key_file
+    - name: Ler priv_key_file local
       command: "grep '^priv_key_file' {{ conf_file }}"
       register: key_line
 
-    - name: Extrair caminhos
+    - name: Extrair caminhos dos arquivos
       set_fact:
         cert_path: "{{ cert_line.stdout.split('=')[1] | trim }}"
         key_path: "{{ key_line.stdout.split('=')[1] | trim }}"
 
-    # 1️⃣ REMOVER QUALQUER cert_file SEM GROUP
-    - name: Remover cert_file com group NULL
-      command: >
-        mysql -u {{ lookup('env', 'DB_USER') }}
-        -p{{ lookup('env', 'DB_PASSWORD') }}
-        -D {{ db_name }}
-        -e "
-          DELETE FROM pjsip_configs
-          WHERE field='cert_file'
-            AND (`group` IS NULL OR TRIM(`group`)='');"
-
-    # 1️⃣ REMOVER QUALQUER priv_key_file SEM GROUP
-    - name: Remover priv_key_file com group NULL
-      command: >
-        mysql -u {{ lookup('env', 'DB_USER') }}
-        -p{{ lookup('env', 'DB_PASSWORD') }}
-        -D {{ db_name }}
-        -e "
-          DELETE FROM pjsip_configs
-          WHERE field='priv_key_file'
-            AND (`group` IS NULL OR TRIM(`group`)='');"
-
-    # 2️⃣ GARANTIR QUE A LINHA CERTA EXISTE
-    - name: Criar cert_file se não existir
-      command: >
-        mysql -u {{ lookup('env', 'DB_USER') }}
-        -p{{ lookup('env', 'DB_PASSWORD') }}
-        -D {{ db_name }}
-        -e "
-          INSERT IGNORE INTO pjsip_configs (field, value, `group`)
-          VALUES ('cert_file', '', 'transport');"
-
-    - name: Criar priv_key_file se não existir
-      command: >
-        mysql -u {{ lookup('env', 'DB_USER') }}
-        -p{{ lookup('env', 'DB_PASSWORD') }}
-        -D {{ db_name }}
-        -e "
-          INSERT IGNORE INTO pjsip_configs (field, value, `group`)
-          VALUES ('priv_key_file', '', 'transport');"
-
-    # 3️⃣ NOW update the correct ones
-    - name: Atualizar cert_file
+    - name: Atualizar cert_file no grupo transport
       command: >
         mysql -u {{ lookup('env', 'DB_USER') }}
         -p{{ lookup('env', 'DB_PASSWORD') }}
@@ -72,9 +30,11 @@
         -e "
           UPDATE pjsip_configs
           SET value='{{ cert_path }}'
-          WHERE field='cert_file' AND `group`='transport';"
+          WHERE field='cert_file'
+            AND TRIM(`group`)='transport';
+        "
 
-    - name: Atualizar priv_key_file
+    - name: Atualizar priv_key_file no grupo transport
       command: >
         mysql -u {{ lookup('env', 'DB_USER') }}
         -p{{ lookup('env', 'DB_PASSWORD') }}
@@ -82,10 +42,12 @@
         -e "
           UPDATE pjsip_configs
           SET value='{{ key_path }}'
-          WHERE field='priv_key_file' AND `group`='transport';"
+          WHERE field='priv_key_file'
+            AND TRIM(`group`)='transport';
+        "
 
-    - name: Exibir resultado
+    - name: Mostrar o que foi aplicado
       debug:
         msg:
-          - "cert_file => {{ cert_path }}"
-          - "priv_key_file => {{ key_path }}"
+          - "cert_file atualizado para: {{ cert_path }}"
+          - "priv_key_file atualizado para: {{ key_path }}"
