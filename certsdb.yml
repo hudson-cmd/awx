@@ -1,6 +1,6 @@
 ---
 - name: Atualizar cert_file e priv_key_file diretamente do arquivo conf
-  hosts: asterisk
+  hosts: all
   become: true
 
   vars:
