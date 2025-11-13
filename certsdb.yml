@@ -1,6 +1,6 @@
 ---
 - name: Sincronizar certificados TLS do Asterisk
-  hosts: asterisk
+  hosts: all
   become: true
 
   vars:
