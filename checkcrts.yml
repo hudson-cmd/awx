@@ -1,55 +1,41 @@
-
 ---
-- name: Validar e garantir renovação automática do Certbot
+- name: Garantir renovação automática do Certbot em Rocky 8
   hosts: all
   gather_facts: no
 
   tasks:
 
     - name: Verificar se o timer existe
-      ansible.builtin.command: systemctl status certbot-renew.timer
-      register: timer_status
-      changed_when: false
-      failed_when: false
+      ansible.builtin.stat:
+        path: /usr/lib/systemd/system/certbot-renew.timer
+      register: timer_file
 
-    - name: Verificar se o timer está ativo
+    - name: Falhar se o timer não existir
+      ansible.builtin.fail:
+        msg: "❌ Timer certbot-renew.timer não existe nesta máquina!"
+      when: not timer_file.stat.exists
+
+    - name: Verificar status do timer
       ansible.builtin.command: systemctl is-active certbot-renew.timer
       register: timer_active
       changed_when: false
       failed_when: false
 
-    - name: Verificar se o timer está habilitado
+    - name: Verificar se está habilitado
       ansible.builtin.command: systemctl is-enabled certbot-renew.timer
       register: timer_enabled
       changed_when: false
       failed_when: false
 
-    - name: Exibir status atual
-      ansible.builtin.debug:
-        msg:
-          - "Timer Ativo?    -> {{ timer_active.stdout | default('desconhecido') }}"
-          - "Habilitado?     -> {{ timer_enabled.stdout | default('desconhecido') }}"
-          - "Timer Existe?   -> {{ ('not found' not in timer_status.stderr) | ternary('sim', 'nao') }}"
-          - "Saída completa:"
-          - "{{ timer_status.stdout | default('') }}"
-
-    ###########################################################################
-    # AÇÃO AUTOMÁTICA: corrigir caso esteja OFF
-    ###########################################################################
-
-    - name: Habilitar o timer caso esteja desabilitado
+    - name: Habilitar timer se necessário
       ansible.builtin.command: systemctl enable certbot-renew.timer
       when: timer_enabled.stdout != "enabled"
-      register: enable_output
-      changed_when: "'Created symlink' in enable_output.stdout or 'enabled' in enable_output.stdout"
 
-    - name: Iniciar o timer caso esteja parado
+    - name: Iniciar timer se estiver inativo
       ansible.builtin.command: systemctl start certbot-renew.timer
       when: timer_active.stdout != "active"
-      register: start_output
-      changed_when: true
 
-    - name: Reexibir status final após correção
+    - name: Status final
       ansible.builtin.command: systemctl status certbot-renew.timer
       register: final_status
       changed_when: false
@@ -57,5 +43,5 @@
     - name: Mostrar resultado final
       ansible.builtin.debug:
         msg:
-          - "Status FINAL:"
+          - "STATUS FINAL:"
           - "{{ final_status.stdout }}"
