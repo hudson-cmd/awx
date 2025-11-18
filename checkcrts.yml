@@ -1,35 +1,61 @@
+
 ---
-- name: Validar se o Certbot está configurado para renovar automaticamente
+- name: Validar e garantir renovação automática do Certbot
   hosts: all
   gather_facts: no
 
   tasks:
-    - name: Verificar status do certbot.timer
-      ansible.builtin.command: systemctl status certbot.timer
-      register: certbot_status
-      changed_when: false
 
-    - name: Verificar se o certbot.timer está ativo
-      ansible.builtin.command: systemctl is-active certbot.timer
-      register: certbot_active
+    - name: Verificar se o timer existe
+      ansible.builtin.command: systemctl status certbot-renew.timer
+      register: timer_status
       changed_when: false
       failed_when: false
 
-    - name: Verificar se o certbot.timer está habilitado
-      ansible.builtin.command: systemctl is-enabled certbot.timer
-      register: certbot_enabled
+    - name: Verificar se o timer está ativo
+      ansible.builtin.command: systemctl is-active certbot-renew.timer
+      register: timer_active
       changed_when: false
       failed_when: false
 
-    - name: Exibir status do Certbot
+    - name: Verificar se o timer está habilitado
+      ansible.builtin.command: systemctl is-enabled certbot-renew.timer
+      register: timer_enabled
+      changed_when: false
+      failed_when: false
+
+    - name: Exibir status atual
       ansible.builtin.debug:
         msg:
-          - "Certbot Timer - Estado Atual: {{ certbot_active.stdout | default('desconhecido') }}"
-          - "Certbot Timer - Habilitado no Boot: {{ certbot_enabled.stdout | default('desconhecido') }}"
-          - "Saída completa do systemctl status:"
-          - "{{ certbot_status.stdout }}"
+          - "Timer Ativo?    -> {{ timer_active.stdout | default('desconhecido') }}"
+          - "Habilitado?     -> {{ timer_enabled.stdout | default('desconhecido') }}"
+          - "Timer Existe?   -> {{ ('not found' not in timer_status.stderr) | ternary('sim', 'nao') }}"
+          - "Saída completa:"
+          - "{{ timer_status.stdout | default('') }}"
 
-    - name: Falhar caso o Certbot não esteja ativo
-      ansible.builtin.fail:
-        msg: "❌ O certbot.timer NÃO está ativo! A renovação automática não vai rodar."
-      when: certbot_active.stdout != "active"
+    ###########################################################################
+    # AÇÃO AUTOMÁTICA: corrigir caso esteja OFF
+    ###########################################################################
+
+    - name: Habilitar o timer caso esteja desabilitado
+      ansible.builtin.command: systemctl enable certbot-renew.timer
+      when: timer_enabled.stdout != "enabled"
+      register: enable_output
+      changed_when: "'Created symlink' in enable_output.stdout or 'enabled' in enable_output.stdout"
+
+    - name: Iniciar o timer caso esteja parado
+      ansible.builtin.command: systemctl start certbot-renew.timer
+      when: timer_active.stdout != "active"
+      register: start_output
+      changed_when: true
+
+    - name: Reexibir status final após correção
+      ansible.builtin.command: systemctl status certbot-renew.timer
+      register: final_status
+      changed_when: false
+
+    - name: Mostrar resultado final
+      ansible.builtin.debug:
+        msg:
+          - "Status FINAL:"
+          - "{{ final_status.stdout }}"
