@@ -1,6 +1,6 @@
 ---
 - name: Validar se o Certbot está configurado para renovar automaticamente
-  hosts: servidores
+  hosts: all
   gather_facts: no
 
   tasks:
