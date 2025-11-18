@@ -1,22 +1,35 @@
+---
 - name: Validar se o Certbot está configurado para renovar automaticamente
-  hosts: all
+  hosts: servidores
   gather_facts: no
 
   tasks:
     - name: Verificar status do certbot.timer
-      ansible.builtin.systemd:
-        name: certbot.timer
-      register: certbot_timer
-        # OBS: modo leitura, não altera nada
+      ansible.builtin.command: systemctl status certbot.timer
+      register: certbot_status
+      changed_when: false
+
+    - name: Verificar se o certbot.timer está ativo
+      ansible.builtin.command: systemctl is-active certbot.timer
+      register: certbot_active
+      changed_when: false
+      failed_when: false
+
+    - name: Verificar se o certbot.timer está habilitado
+      ansible.builtin.command: systemctl is-enabled certbot.timer
+      register: certbot_enabled
+      changed_when: false
+      failed_when: false
 
     - name: Exibir status do Certbot
       ansible.builtin.debug:
         msg:
-          - "Certbot Timer - Estado Atual: {{ certbot_timer.status.ActiveState }}"
-          - "Certbot Timer - Habilitado no Boot: {{ certbot_timer.status.UnitFileState }}"
-          - "Detalhes: {{ certbot_timer.status }}"
-      
+          - "Certbot Timer - Estado Atual: {{ certbot_active.stdout | default('desconhecido') }}"
+          - "Certbot Timer - Habilitado no Boot: {{ certbot_enabled.stdout | default('desconhecido') }}"
+          - "Saída completa do systemctl status:"
+          - "{{ certbot_status.stdout }}"
+
     - name: Falhar caso o Certbot não esteja ativo
       ansible.builtin.fail:
         msg: "❌ O certbot.timer NÃO está ativo! A renovação automática não vai rodar."
-      when: certbot_timer.status.ActiveState != "active"
+      when: certbot_active.stdout != "active"
