@@ -1,10 +1,7 @@
 ---
 - name: Trocar somente a senha SMTP no Postfix e enviar e-mail de confirmação
-  hosts: all
+  hosts: mail
   become: true
-
-  collections:
-    - community.general
 
   vars:
     nova_senha: "{{ smtp_password }}"
@@ -35,11 +32,15 @@
         name: postfix
         state: restarted
 
-    - name: Enviar e-mail de confirmação
-      community.general.mail:
-        host: all
-        to: "hudson.amaral@uniotelecom.com.br"
-        subject: "Senha SMTP atualizada"
-        body: "A senha SMTP foi atualizada com sucesso pelo AWX."
-      delegate_to: localhost
+    - name: Enviar e-mail de confirmação via sendmail
+      shell: |
+        /usr/sbin/sendmail -t <<EOF
+        To: hudson.amaral@uniotelecom.com.br
+        Subject: Senha SMTP atualizada
+
+        A senha SMTP foi atualizada com sucesso pelo AWX.
+        EOF
+      args:
+        executable: /bin/bash
+      delegate_to: "{{ inventory_hostname }}"
       run_once: true
