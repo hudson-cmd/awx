@@ -1,6 +1,6 @@
 ---
 - name: Trocar somente a senha SMTP no Postfix e enviar e-mail de confirmação
-  hosts: mail
+  hosts: all
   become: true
 
   collections:
@@ -37,7 +37,7 @@
 
     - name: Enviar e-mail de confirmação
       community.general.mail:
-        host: localhost
+        host: all
         to: "hudson.amaral@uniotelecom.com.br"
         subject: "Senha SMTP atualizada"
         body: "A senha SMTP foi atualizada com sucesso pelo AWX."
