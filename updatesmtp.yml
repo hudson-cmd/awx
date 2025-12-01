@@ -1,6 +1,6 @@
 ---
 - name: Trocar somente a senha SMTP no Postfix e enviar e-mail de confirmação
-  hosts: mail
+  hosts: all
   become: true
 
   vars:
