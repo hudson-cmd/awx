@@ -3,6 +3,9 @@
   hosts: mail
   become: true
 
+  collections:
+    - community.general
+
   vars:
     nova_senha: "{{ smtp_password }}"
 
