@@ -1,0 +1,42 @@
+---
+- name: Trocar somente a senha SMTP no Postfix e enviar e-mail de confirmação
+  hosts: all
+  become: true
+
+  vars:
+    nova_senha: "{{ smtp_password }}" 
+
+  tasks:
+
+    - name: Ler conteúdo atual do sasl_passwd
+      command: cat /etc/postfix/sasl_passwd
+      register: sasl_raw
+
+    - name: Montar linha nova substituindo somente a senha
+      set_fact:
+        sasl_novo: "{{ sasl_raw.stdout.rsplit(':', 1)[0] }}:{{ nova_senha }}"
+
+    - name: Atualizar arquivo sasl_passwd
+      copy:
+        dest: /etc/postfix/sasl_passwd
+        content: "{{ sasl_novo }}\n"
+        owner: root
+        group: root
+        mode: "0600"
+
+    - name: Gerar banco sasl_passwd.db
+      command: postmap /etc/postfix/sasl_passwd
+
+    - name: Reiniciar Postfix
+      service:
+        name: postfix
+        state: restarted
+
+    - name: Enviar e-mail de confirmação
+      mail:
+        host: all
+        to: "hudson.amaral@uniotelecom.com.br"
+        subject: "Senha SMTP atualizada"
+        body: "A senha SMTP foi atualizada com sucesso pelo AWX."
+      delegate_to: localhost
+      run_once: true
