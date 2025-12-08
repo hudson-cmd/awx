@@ -1,31 +1,26 @@
 ---
-- name: Garantir renovação automática do Certbot no Rocky 8 (modo direto)
+- name: Restart e consultar agendamento do Certbot Renew
   hosts: all
-  gather_facts: no
   become: yes
+  gather_facts: no
 
   tasks:
 
     - name: Reload no systemd
       ansible.builtin.command: systemctl daemon-reload
 
-    - name: Habilitar e iniciar timer correto do Certbot
-      ansible.builtin.command: systemctl enable --now certbot.timer
+    - name: Restart certbot-renew.timer
+      ansible.builtin.command: systemctl restart certbot-renew.timer
 
-    - name: Restart no timer do Certbot
-      ansible.builtin.command: systemctl restart certbot.timer
-
-    - name: Rodar renovação agora (opcional, sobe se o prazo tiver perto)
-      ansible.builtin.command: certbot renew --quiet
-      ignore_errors: yes
-
-    - name: Status final do timer
-      ansible.builtin.command: systemctl status certbot.timer
-      register: final_status
+    - name: Ver quando o Certbot vai rodar
+      ansible.builtin.command: systemctl list-timers --all
+      register: timers
       changed_when: false
 
-    - name: Resultado
+    - name: Filtrar apenas o certbot-renew.timer
+      set_fact:
+        certbot_timer_info: "{{ timers.stdout_lines | select('search', 'certbot-renew.timer') | list | first }}"
+    
+    - name: Mostrar informação do próximo renew
       ansible.builtin.debug:
-        msg:
-          - "STATUS TIMER:"
-          - "{{ final_status.stdout }}"
+        msg: "⏰ Próxima execução agendada: {{ certbot_timer_info }}"
