@@ -1,47 +1,31 @@
 ---
-- name: Garantir renovação automática do Certbot em Rocky 8
+- name: Garantir renovação automática do Certbot no Rocky 8 (modo direto)
   hosts: all
   gather_facts: no
+  become: yes
 
   tasks:
 
-    - name: Verificar se o timer existe
-      ansible.builtin.stat:
-        path: /usr/lib/systemd/system/certbot-renew.timer
-      register: timer_file
+    - name: Reload no systemd
+      ansible.builtin.command: systemctl daemon-reload
 
-    - name: Falhar se o timer não existir
-      ansible.builtin.fail:
-        msg: "❌ Timer certbot-renew.timer não existe nesta máquina!"
-      when: not timer_file.stat.exists
+    - name: Habilitar e iniciar timer correto do Certbot
+      ansible.builtin.command: systemctl enable --now certbot.timer
 
-    - name: Verificar status do timer
-      ansible.builtin.command: systemctl is-active certbot-renew.timer
-      register: timer_active
-      changed_when: false
-      failed_when: false
+    - name: Restart no timer do Certbot
+      ansible.builtin.command: systemctl restart certbot.timer
 
-    - name: Verificar se está habilitado
-      ansible.builtin.command: systemctl is-enabled certbot-renew.timer
-      register: timer_enabled
-      changed_when: false
-      failed_when: false
+    - name: Rodar renovação agora (opcional, sobe se o prazo tiver perto)
+      ansible.builtin.command: certbot renew --quiet
+      ignore_errors: yes
 
-    - name: Habilitar timer se necessário
-      ansible.builtin.command: systemctl enable certbot-renew.timer
-      when: timer_enabled.stdout != "enabled"
-
-    - name: Iniciar timer se estiver inativo
-      ansible.builtin.command: systemctl start certbot-renew.timer
-      when: timer_active.stdout != "active"
-
-    - name: Status final
-      ansible.builtin.command: systemctl status certbot-renew.timer
+    - name: Status final do timer
+      ansible.builtin.command: systemctl status certbot.timer
       register: final_status
       changed_when: false
 
-    - name: Mostrar resultado final
+    - name: Resultado
       ansible.builtin.debug:
         msg:
-          - "STATUS FINAL:"
+          - "STATUS TIMER:"
           - "{{ final_status.stdout }}"
