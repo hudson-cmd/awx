@@ -1,19 +1,17 @@
 ---
-# === VARIÁVEIS ======================
-firewall_lines: |
-  UNION01=186.224.193.0/24
-  UNION02=172.20.0.0/16
-  UNION03=10.9.0.0/16
-
-  iptables -I INPUT -s $UNION01 -j ACCEPT
-  iptables -I INPUT -s $UNION02 -j ACCEPT
-  iptables -I INPUT -s $UNION03 -j ACCEPT
-
-
-# === PLAYBOOK =======================
 - name: Aplicar redes UNION no Firewall
   hosts: all
   become: yes
+
+  vars:
+    firewall_lines: |
+      UNION01=186.224.193.0/24
+      UNION02=172.20.0.0/16
+      UNION03=10.9.0.0/16
+
+      iptables -I INPUT -s $UNION01 -j ACCEPT
+      iptables -I INPUT -s $UNION02 -j ACCEPT
+      iptables -I INPUT -s $UNION03 -j ACCEPT
 
   tasks:
 
