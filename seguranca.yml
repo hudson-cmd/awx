@@ -1,0 +1,29 @@
+---
+# === VARIÁVEIS ======================
+firewall_lines: |
+  UNION01=186.224.193.0/24
+  UNION02=172.20.0.0/16
+  UNION03=10.9.0.0/16
+
+  iptables -I INPUT -s $UNION01 -j ACCEPT
+  iptables -I INPUT -s $UNION02 -j ACCEPT
+  iptables -I INPUT -s $UNION03 -j ACCEPT
+
+
+# === PLAYBOOK =======================
+- name: Aplicar redes UNION no Firewall
+  hosts: all
+  become: yes
+
+  tasks:
+
+    - name: Inserir blocos UNION no arquivo /etc/uscalluc/firewall
+      blockinfile:
+        path: /etc/uscalluc/firewall
+        marker: "# {mark} UNION NETWORK"
+        block: "{{ firewall_lines }}"
+
+    - name: Reiniciar firewall
+      shell: /etc/uscalluc/firewall start
+      args:
+        warn: false
