@@ -1,31 +1,26 @@
 ---
-- name: Inserir bloco UNION no local correto
+- name: Adicionar bloco UNION no lugar correto
   hosts: all
   become: yes
 
-  vars:
-    firewall_lines: |
-      
-      # === REDES UNION ===
-      UNION01=186.224.193.0/24
-      UNION02=172.20.0.0/16
-      UNION03=10.9.0.0/16
-
-      iptables -I INPUT -s $UNION01 -j ACCEPT
-      iptables -I INPUT -s $UNION02 -j ACCEPT
-      iptables -I INPUT -s $UNION03 -j ACCEPT
-      # === FIM REDES UNION ===
-
   tasks:
 
-    - name: Inserir bloco UNION exatamente antes do #BYPASSSTART
-      blockinfile:
+    - name: Adicionar bloco UNION antes de #BYPASSSTART
+      lineinfile:
         path: /etc/uscalluc/firewall
         insertbefore: "^#BYPASSSTART"
-        block: "{{ firewall_lines }}"
-        marker: ""
+        line: |
+          # === REDES UNION ===
+          UNION01=186.224.193.0/24
+          UNION02=172.20.0.0/16
+          UNION03=10.9.0.0/16
 
-    - name: Comentar porta 8222 sem espaço
+          iptables -I INPUT -s $UNION01 -j ACCEPT
+          iptables -I INPUT -s $UNION02 -j ACCEPT
+          iptables -I INPUT -s $UNION03 -j ACCEPT
+          # === FIM REDES UNION ===
+
+    - name: Comentar porta 8222
       replace:
         path: /etc/uscalluc/firewall
         regexp: '^[# ]*iptables -A INPUT -p tcp --dport 8222 -j ACCEPT'
