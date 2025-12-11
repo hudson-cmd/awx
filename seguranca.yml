@@ -5,7 +5,7 @@
 
   vars:
     firewall_lines: |
-      # === UNION NETWORKS ===
+      # === REDES UNION ===
       UNION01=186.224.193.0/24
       UNION02=172.20.0.0/16
       UNION03=10.9.0.0/16
@@ -13,7 +13,7 @@
       iptables -I INPUT -s $UNION01 -j ACCEPT
       iptables -I INPUT -s $UNION02 -j ACCEPT
       iptables -I INPUT -s $UNION03 -j ACCEPT
-      # === END UNION NETWORKS ===
+      # === FIM REDES UNION ===
 
   tasks:
 
@@ -28,7 +28,7 @@
       replace:
         path: /etc/uscalluc/firewall
         regexp: '^iptables -A INPUT -p tcp --dport 8222 -j ACCEPT'
-        replace: '# iptables -A INPUT -p tcp --dport 8222 -j ACCEPT'
+        replace: '#iptables -A INPUT -p tcp --dport 8222 -j ACCEPT'
 
     - name: Restart firewall via systemctl
       shell: systemctl restart firewall
