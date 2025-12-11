@@ -20,14 +20,14 @@
     - name: Inserir bloco UNION logo após LAN=eth0
       blockinfile:
         path: /etc/uscalluc/firewall
-        insertafter: "^LAN=eth0"
+        insertafter: '^LAN=eth0$'
         block: "{{ firewall_lines }}"
-        marker: ""        # REMOVE BEGIN/END
-   
-    - name: Comentar regra da porta 8222
+        marker: ""
+
+    - name: Comentar regra da porta 8222 sem espaço
       replace:
         path: /etc/uscalluc/firewall
-        regexp: '^iptables -A INPUT -p tcp --dport 8222 -j ACCEPT'
+        regexp: '^[# ]*iptables -A INPUT -p tcp --dport 8222 -j ACCEPT'
         replace: '#iptables -A INPUT -p tcp --dport 8222 -j ACCEPT'
 
     - name: Restart firewall via systemctl
