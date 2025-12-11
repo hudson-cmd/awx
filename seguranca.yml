@@ -22,6 +22,7 @@
         path: /etc/uscalluc/firewall
         insertafter: "^LAN=eth0"
         block: "{{ firewall_lines }}"
+        marker: ""        # REMOVE BEGIN/END
    
     - name: Comentar regra da porta 8222
       replace:
