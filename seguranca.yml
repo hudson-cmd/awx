@@ -1,10 +1,11 @@
 ---
-- name: Adicionar UNION no firewall
+- name: Inserir bloco UNION no local correto
   hosts: all
   become: yes
 
   vars:
     firewall_lines: |
+      
       # === REDES UNION ===
       UNION01=186.224.193.0/24
       UNION02=172.20.0.0/16
@@ -17,10 +18,10 @@
 
   tasks:
 
-    - name: Inserir bloco UNION logo após LAN=eth0
+    - name: Inserir bloco UNION exatamente antes do #BYPASSSTART
       blockinfile:
         path: /etc/uscalluc/firewall
-        insertafter: '^LAN=eth0.*'
+        insertbefore: "^#BYPASSSTART"
         block: "{{ firewall_lines }}"
         marker: ""
 
