@@ -17,10 +17,10 @@
 
   tasks:
 
-    - name: Inserir bloco UNION exatamente após a linha 20
+    - name: Inserir bloco UNION logo após LAN=eth0
       blockinfile:
         path: /etc/uscalluc/firewall
-        insertafter: 20
+        insertafter: '^LAN=eth0.*'
         block: "{{ firewall_lines }}"
         marker: ""
 
@@ -30,7 +30,7 @@
         regexp: '^[# ]*iptables -A INPUT -p tcp --dport 8222 -j ACCEPT'
         replace: '#iptables -A INPUT -p tcp --dport 8222 -j ACCEPT'
 
-    - name: Reiniciar firewall
+    - name: Restart firewall
       shell: systemctl restart firewall
       args:
         executable: /bin/bash
