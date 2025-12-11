@@ -17,10 +17,10 @@
 
   tasks:
 
-    - name: Inserir bloco UNION logo após LAN=eth0
+    - name: Inserir bloco UNION exatamente após a linha 20
       blockinfile:
         path: /etc/uscalluc/firewall
-        insertafter: "^LAN=eth0.*$"
+        insertafter: 20
         block: "{{ firewall_lines }}"
         marker: ""
 
