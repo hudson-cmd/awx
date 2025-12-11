@@ -17,20 +17,18 @@
 
   tasks:
 
-    - name: Inserir bloco UNION logo após LAN=eth0
+    - name: Inserir bloco UNION antes de #BYPASSSTART
       blockinfile:
         path: /etc/uscalluc/firewall
-        insertafter: "LAN=eth0"
+        insertbefore: "^#BYPASSSTART"
         block: "{{ firewall_lines }}"
         marker: ""
 
     - name: Comentar regra da porta 8222 sem espaço
       replace:
         path: /etc/uscalluc/firewall
-        regexp: 'iptables -A INPUT -p tcp --dport 8222 -j ACCEPT'
+        regexp: '^[# ]*iptables -A INPUT -p tcp --dport 8222 -j ACCEPT'
         replace: '#iptables -A INPUT -p tcp --dport 8222 -j ACCEPT'
 
     - name: Restart firewall
-      systemd:
-        name: firewall
-        state: restarted
+      shell: systemctl restart firewall
