@@ -1,0 +1,42 @@
+---
+- name: Configurar MOTD e pacotes básicos
+  hosts: all
+  become: true
+
+  tasks:
+
+    - name: Instalar pacotes necessários
+      yum:
+        name:
+          - open-vm-tools
+          - vim
+        state: present
+
+    - name: Criar MOTD simples em /etc/profile.d/motd.sh
+      copy:
+        dest: /etc/profile.d/motd.sh
+        owner: root
+        group: root
+        mode: '0755'
+        content: |
+          #!/bin/bash
+
+          [[ -n "$MOTD_SHOWN" ]] && return
+          export MOTD_SHOWN=1
+
+          if [[ "$USER" == "suporte" || "$USER" == "root" ]]; then
+              echo "===================================="
+              echo " 🖥️ Servidor: $(hostname)"
+              echo " 📅 Data: $(date)"
+              echo " ⏳ Uptime: $(uptime -p)"
+              echo " 📊 Usuários logados: $(who | wc -l)"
+              echo " 🌐 Espaço livre no disco: $(df -h / | tail -1 | awk '{print $4}')"
+              echo "===================================="
+          fi
+- name: Rebootar o servidor
+      reboot:
+        msg: "Reboot automático via AWX após configuração de MOTD e pacotes"
+        reboot_timeout: 600
+        pre_reboot_delay: 5
+        post_reboot_delay: 20
+        test_command: whoami
