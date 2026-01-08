@@ -33,9 +33,10 @@
               echo " 🌐 Espaço livre no disco: $(df -h / | tail -1 | awk '{print $4}')"
               echo "===================================="
           fi
-- name: Rebootar o servidor
+
+    - name: Rebootar o servidor
       reboot:
-        msg: "Reboot automático via AWX após configuração de MOTD e pacotes"
+        msg: "Reboot automático via AWX após configuração"
         reboot_timeout: 600
         pre_reboot_delay: 5
         post_reboot_delay: 20
