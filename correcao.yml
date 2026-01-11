@@ -8,7 +8,7 @@
         dest: /etc/asterisk/http.conf
         owner: root
         group: root
-        mode: '0644'
+        mode: '0755'
         content: |
           [general]
           enabled=yes
