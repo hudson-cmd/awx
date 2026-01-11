@@ -1,0 +1,31 @@
+- hosts: all
+  become: yes
+  gather_facts: no
+
+  tasks:
+    - name: Sobrescrever /etc/asterisk/http.conf (padrao forçado)
+      copy:
+        dest: /etc/asterisk/http.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          [general]
+          enabled=yes
+          enablestatic=yes
+          bindaddr=127.0.0.1
+          bindport=8088
+          ;prefix=asterisk
+          tlsenable=yes
+          tlsbindaddr=0.0.0.0:8089
+          tlscertfile=/etc/nginx/certs/localhost/localhost.crt
+          tlsprivatekey=/etc/nginx/certs/localhost/localhost.key
+
+    - name: Reiniciar Asterisk SEM CONVERSA
+      shell: systemctl restart asterisk
+
+    - name: Garantir que a porta 8089 esta em LISTEN
+      shell: netstat -tnlp | grep ':8089 '
+      register: porta_8089
+      changed_when: false
+      failed_when: porta_8089.rc != 0
