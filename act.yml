@@ -1,0 +1,9 @@
+
+- name: Remove arquivo .actinfo
+  hosts: all
+  become: true
+  tasks:
+    - name: Apagar arquivo /etc/uscalluc/.actinfo
+      file:
+        path: /etc/uscalluc/.actinfo
+        state: absent
