@@ -2,7 +2,7 @@
   hosts: all
   become: yes
   vars:
-    dominio_base: ".com.br"
+    dominio_base: ".com"
     lets_dir: "/etc/letsencrypt"
     asterisk_http_conf: "/etc/asterisk/http.conf"
     asterisk_pjsip_conf: "/etc/asterisk/pjsip_transport.conf"
