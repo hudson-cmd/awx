@@ -10,7 +10,16 @@
         name:
           - open-vm-tools
           - vim
+          - htop  
+          - wget
         state: present
+
+    - name: Baixar o pacote sngrep via wget
+      get_url:
+        url: http://repo.iotti.biz/CentOS/8/x86_64/sngrep-1.7.0-0.el8.lux.x86_64.rpm
+        dest: /tmp/sngrep/sngrep-1.7.0-0.el8.lux.x86_64.rpm
+        mode: '0644'
+
 
     - name: Criar MOTD simples em /etc/profile.d/motd.sh
       copy:
