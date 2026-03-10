@@ -5,6 +5,11 @@
 
   tasks:
 
+  - name: Instalar repositório EPEL
+  yum:
+    name: epel-release
+    state: present
+
     - name: Instalar pacotes necessários
       yum:
         name:
