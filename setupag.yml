@@ -1,17 +1,9 @@
 ---
-- name: Bootstrap + Configuração base
+- name: Configurar MOTD e pacotes básicos
   hosts: all
   become: true
-  gather_facts: false
 
   tasks:
-
-    - name: Instalar Python (bootstrap)
-      raw: dnf install -y python3
-      changed_when: false
-
-    - name: Coletar facts após Python
-      setup:
 
     - name: Instalar repositório EPEL
       yum:
@@ -39,21 +31,21 @@
     - name: Baixar pacote sngrep
       get_url:
         url: http://repo.iotti.biz/CentOS/8/x86_64/sngrep-1.7.0-0.el8.lux.x86_64.rpm
-        dest: /tmp/sngrep/sngrep.rpm
+        dest: /tmp/sngrep/sngrep-1.7.0-0.el8.lux.x86_64.rpm
         mode: '0644'
 
     - name: Instalar sngrep
       yum:
-        name: /tmp/sngrep/sngrep.rpm
+        name: /tmp/sngrep/sngrep-1.7.0-0.el8.lux.x86_64.rpm
         state: present
         disable_gpg_check: true
 
-    - name: Remover RPM do sngrep
+    - name: Remover RPM do sngrep após instalação
       file:
-        path: /tmp/sngrep/sngrep.rpm
+        path: /tmp/sngrep/sngrep-1.7.0-0.el8.lux.x86_64.rpm
         state: absent
 
-    - name: Criar MOTD
+    - name: Criar MOTD em /etc/profile.d/motd.sh
       copy:
         dest: /etc/profile.d/motd.sh
         owner: root
@@ -71,13 +63,13 @@
               echo " 📅 Data: $(date)"
               echo " ⏳ Uptime: $(uptime -p)"
               echo " 📊 Usuários logados: $(who | wc -l)"
-              echo " 🌐 Espaço livre: $(df -h / | tail -1 | awk '{print $4}')"
+              echo " 🌐 Espaço livre no disco: $(df -h / | tail -1 | awk '{print $4}')"
               echo "===================================="
           fi
 
     - name: Rebootar servidor
       reboot:
-        msg: "Reboot automático via AWX"
+        msg: "Reboot automático via AWX após configuração"
         reboot_timeout: 600
         pre_reboot_delay: 5
         post_reboot_delay: 20
