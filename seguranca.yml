@@ -1,48 +1,38 @@
 ---
-- name: Restringir acesso SSH 8222 para redes UNION
+- name: Restringir SSH apenas para redes UNION
   hosts: all
   become: yes
 
   tasks:
 
-    - name: Remover bloco antigo ANSIBLE UNION SSH
+    - name: Remover blocos antigos SSH UNION
       blockinfile:
-        path: /etc/uscalluc/firewall
+        path: /etc/ssh/sshd_config
         marker: "# {mark} ANSIBLE UNION SSH"
         state: absent
 
-    - name: Adicionar regras SSH 8222 no FINAL do firewall
+    - name: Adicionar restricao SSH por rede
       blockinfile:
-        path: /etc/uscalluc/firewall
-        insertafter: "iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT"
+        path: /etc/ssh/sshd_config
         marker: "# {mark} ANSIBLE UNION SSH"
 
         block: |
 
-          # === RESTRICAO SSH 8222 UNION ===
+          Match Address 186.224.193.0/24,172.20.0.0/16,10.9.0.0/16
+              PasswordAuthentication yes
+              PubkeyAuthentication yes
 
-          # Remove regras antigas da 8222
-          iptables -D INPUT -p tcp --dport 8222 -j ACCEPT 2>/dev/null || true
-          iptables -D INPUT -p tcp --dport 8222 -j DROP 2>/dev/null || true
+          Match all
+              PasswordAuthentication no
+              PubkeyAuthentication no
 
-          # Libera somente redes UNION
-          iptables -A INPUT -p tcp -s 186.224.193.0/24 --dport 8222 -j ACCEPT
-          iptables -A INPUT -p tcp -s 172.20.0.0/16 --dport 8222 -j ACCEPT
-          iptables -A INPUT -p tcp -s 10.9.0.0/16 --dport 8222 -j ACCEPT
+    - name: Validar configuracao SSH
+      shell: sshd -t
+      register: sshd_test
+      changed_when: false
 
-          # Bloqueia qualquer outro IP
-          iptables -A INPUT -p tcp --dport 8222 -j DROP
-
-          # === FIM RESTRICAO SSH 8222 UNION ===
-
-    - name: Comentar regra antiga da 8222
-      replace:
-        path: /etc/uscalluc/firewall
-        regexp: '^[# ]*iptables -A INPUT -p tcp --dport 8222 -j ACCEPT'
-        replace: '#iptables -A INPUT -p tcp --dport 8222 -j ACCEPT'
-
-    - name: Restart firewall
-      shell: |
-        systemctl restart firewall
-      args:
-        executable: /bin/bash
+    - name: Reiniciar SSHD
+      service:
+        name: sshd
+        state: restarted
+      when: sshd_test.rc == 0
