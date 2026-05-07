@@ -1,32 +1,44 @@
 ---
-- name: Adicionar bloco UNION no lugar correto
+- name: Restringir acesso SSH 8222 para redes UNION
   hosts: all
   become: yes
 
   tasks:
 
-    - name: Adicionar bloco UNION antes de #BYPASSSTART
-      lineinfile:
+    - name: Adicionar regras UNION antes de #BYPASSSTART
+      blockinfile:
         path: /etc/uscalluc/firewall
         insertbefore: "^#BYPASSSTART"
-        line: |
-          # === REDES UNION ===
-          UNION01=186.224.193.0/24
-          UNION02=172.20.0.0/16
-          UNION03=10.9.0.0/16
+        marker: "# {mark} ANSIBLE UNION SSH"
 
-          iptables -I INPUT -s $UNION01 -j ACCEPT
-          iptables -I INPUT -s $UNION02 -j ACCEPT
-          iptables -I INPUT -s $UNION03 -j ACCEPT
-          # === FIM REDES UNION ===
+        block: |
 
-    - name: Comentar porta 8222
+          # === REDES UNION SSH 8222 ===
+
+          # Libera redes UNION na porta 8222
+          iptables -I INPUT 1 -p tcp -s 186.224.193.0/24 --dport 8222 -j ACCEPT
+          iptables -I INPUT 2 -p tcp -s 172.20.0.0/16 --dport 8222 -j ACCEPT
+          iptables -I INPUT 3 -p tcp -s 10.9.0.0/16 --dport 8222 -j ACCEPT
+
+          # Bloqueia restante da internet na 8222
+          iptables -I INPUT 4 -p tcp --dport 8222 -j DROP
+
+          # === FIM REDES UNION SSH 8222 ===
+
+    - name: Remover regras ACCEPT ALL perigosas
+      lineinfile:
+        path: /etc/uscalluc/firewall
+        state: absent
+        regexp: '^iptables -A INPUT -j ACCEPT$'
+
+    - name: Comentar regra antiga da 8222
       replace:
         path: /etc/uscalluc/firewall
         regexp: '^[# ]*iptables -A INPUT -p tcp --dport 8222 -j ACCEPT'
         replace: '#iptables -A INPUT -p tcp --dport 8222 -j ACCEPT'
 
     - name: Restart firewall
-      shell: systemctl restart firewall
+      shell: |
+        systemctl restart firewall
       args:
         executable: /bin/bash
