@@ -5,31 +5,35 @@
 
   tasks:
 
-    - name: Adicionar regras UNION antes de #BYPASSSTART
+    - name: Remover bloco antigo ANSIBLE UNION SSH
       blockinfile:
         path: /etc/uscalluc/firewall
-        insertbefore: "^#BYPASSSTART"
+        marker: "# {mark} ANSIBLE UNION SSH"
+        state: absent
+
+    - name: Adicionar regras SSH 8222 no FINAL do firewall
+      blockinfile:
+        path: /etc/uscalluc/firewall
+        insertafter: "iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT"
         marker: "# {mark} ANSIBLE UNION SSH"
 
         block: |
 
-          # === REDES UNION SSH 8222 ===
+          # === RESTRICAO SSH 8222 UNION ===
 
-          # Libera redes UNION na porta 8222
-          iptables -I INPUT 1 -p tcp -s 186.224.193.0/24 --dport 8222 -j ACCEPT
-          iptables -I INPUT 2 -p tcp -s 172.20.0.0/16 --dport 8222 -j ACCEPT
-          iptables -I INPUT 3 -p tcp -s 10.9.0.0/16 --dport 8222 -j ACCEPT
+          # Remove regras antigas da 8222
+          iptables -D INPUT -p tcp --dport 8222 -j ACCEPT 2>/dev/null || true
+          iptables -D INPUT -p tcp --dport 8222 -j DROP 2>/dev/null || true
 
-          # Bloqueia restante da internet na 8222
-          iptables -I INPUT 4 -p tcp --dport 8222 -j DROP
+          # Libera somente redes UNION
+          iptables -A INPUT -p tcp -s 186.224.193.0/24 --dport 8222 -j ACCEPT
+          iptables -A INPUT -p tcp -s 172.20.0.0/16 --dport 8222 -j ACCEPT
+          iptables -A INPUT -p tcp -s 10.9.0.0/16 --dport 8222 -j ACCEPT
 
-          # === FIM REDES UNION SSH 8222 ===
+          # Bloqueia qualquer outro IP
+          iptables -A INPUT -p tcp --dport 8222 -j DROP
 
-    - name: Remover regras ACCEPT ALL perigosas
-      lineinfile:
-        path: /etc/uscalluc/firewall
-        state: absent
-        regexp: '^iptables -A INPUT -j ACCEPT$'
+          # === FIM RESTRICAO SSH 8222 UNION ===
 
     - name: Comentar regra antiga da 8222
       replace:
