@@ -131,7 +131,7 @@
       args:
         chdir: "{{ modsec_src_dir }}"
 
- - name: Corrigir incompatibilidade do MaxMindDB com GCC moderno
+    - name: Corrigir incompatibilidade do MaxMindDB com GCC moderno
       replace:
         path: "{{ modsec_src_dir }}/src/utils/geo_lookup.cc"
         regexp: 'MMDB_lookup_string\(&mmdb'
