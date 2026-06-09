@@ -1,313 +1,350 @@
 ---
-
-* name: Instalar ModSecurity + CRS + Nginx Connector
+- name: Instalação WAF ModSecurity v3 + OWASP CRS + Fail2ban (Rocky Linux 8 / Nginx 1.26.1)
   hosts: all
   become: yes
-  gather_facts: yes
-
   vars:
-  nginx_version: "1.26.1"
-  modsec_dir: "/usr/local/src/ModSecurity"
-  modsec_nginx_dir: "/usr/local/src/ModSecurity-nginx"
-  nginx_src_dir: "/usr/local/src/nginx-1.26.1"
+    nginx_version: "1.26.1"
+    nginx_src_dir: "/usr/local/src/nginx-{{ nginx_version }}"
+    modsec_src_dir: "/usr/local/src/ModSecurity"
+    modsec_nginx_dir: "/usr/local/src/ModSecurity-nginx"
+    modsec_install_dir: "/usr/local/modsecurity"
+    modsec_conf_dir: "/etc/nginx/modsecurity"
+    nginx_modules_dir: "/usr/lib64/nginx/modules"
+    nginx_conf_dir: "/etc/nginx"
+    modsec_audit_log: "/var/log/modsec_audit.log"
+    nginx_error_log: "/var/log/nginx/error.log"
+    fail2ban_maxretry: 3
+    fail2ban_findtime: 60
+    fail2ban_bantime: 3600
+
+    # Flags originais de compilação do Nginx — ajuste se necessário
+    nginx_configure_flags: >-
+      --prefix=/etc/nginx
+      --sbin-path=/usr/sbin/nginx
+      --modules-path=/usr/lib64/nginx/modules
+      --conf-path=/etc/nginx/nginx.conf
+      --error-log-path=/var/log/nginx/error.log
+      --http-log-path=/var/log/nginx/access.log
+      --pid-path=/var/run/nginx.pid
+      --lock-path=/var/run/nginx.lock
+      --http-client-body-temp-path=/var/cache/nginx/client_temp
+      --http-proxy-temp-path=/var/cache/nginx/proxy_temp
+      --http-fastcgi-temp-path=/var/cache/nginx/fastcgi_temp
+      --http-uwsgi-temp-path=/var/cache/nginx/uwsgi_temp
+      --http-scgi-temp-path=/var/cache/nginx/scgi_temp
+      --user=nginx
+      --group=nginx
+      --with-compat
+      --with-file-aio
+      --with-threads
+      --with-http_addition_module
+      --with-http_auth_request_module
+      --with-http_dav_module
+      --with-http_flv_module
+      --with-http_gunzip_module
+      --with-http_gzip_static_module
+      --with-http_mp4_module
+      --with-http_random_index_module
+      --with-http_realip_module
+      --with-http_secure_link_module
+      --with-http_slice_module
+      --with-http_ssl_module
+      --with-http_stub_status_module
+      --with-http_sub_module
+      --with-http_v2_module
+      --with-http_v3_module
+      --with-mail
+      --with-mail_ssl_module
+      --with-stream
+      --with-stream_realip_module
+      --with-stream_ssl_module
+      --with-stream_ssl_preread_module
+      --with-cc-opt='-O2 -g -pipe -Wall -Werror=format-security -Wp,-D_FORTIFY_SOURCE=2 -Wp,-D_GLIBCXX_ASSERTIONS -fexceptions -fstack-protector-strong -grecord-gcc-switches -specs=/usr/lib/rpm/redhat/redhat-hardened-cc1 -specs=/usr/lib/rpm/redhat/redhat-annobin-cc1 -m64 -mtune=generic -fasynchronous-unwind-tables -fstack-clash-protection -fcf-protection -fPIC'
+      --with-ld-opt='-Wl,-z,relro -Wl,-z,now -pie'
+      --add-dynamic-module={{ modsec_nginx_dir }}
 
   tasks:
 
-  #################################################################
+    # ─── 1. DEPENDÊNCIAS ────────────────────────────────────────────────────────
 
-  # DEPENDÊNCIAS
+    - name: Habilitar repositório PowerTools
+      command: dnf config-manager --set-enabled powertools
+      changed_when: false
 
-  #################################################################
+    - name: Instalar dependências de compilação
+      dnf:
+        name:
+          - gcc-c++
+          - flex
+          - bison
+          - yajl
+          - curl-devel
+          - curl
+          - zlib-devel
+          - pcre-devel
+          - autoconf
+          - automake
+          - git
+          - make
+          - libxml2-devel
+          - pkgconfig
+          - libtool
+          - wget
+          - openssl
+          - openssl-devel
+          - lmdb
+          - lmdb-devel
+          - ssdeep-devel
+          - lua-devel
+          - yajl-devel
+          - libmaxminddb
+          - libmaxminddb-devel
+          - doxygen
+          - fail2ban
+        state: present
 
-  * name: Instalar dependências
-    dnf:
-    name:
-    - gcc
-    - gcc-c++
-    - make
-    - cmake
-    - git
-    - wget
-    - curl
-    - unzip
-    - tar
-    - autoconf
-    - automake
-    - libtool
-    - pkgconfig
-    - bison
-    - flex
-    - yajl
-    - yajl-devel
-    - libxml2
-    - libxml2-devel
-    - pcre
-    - pcre-devel
-    - pcre2
-    - pcre2-devel
-    - zlib
-    - zlib-devel
-    - openssl
-    - openssl-devel
-    - lua
-    - lua-devel
-    state: present
+    # ─── 2. LIBMODSECURITY ──────────────────────────────────────────────────────
 
-  #################################################################
+    - name: Clonar repositório ModSecurity
+      git:
+        repo: "https://github.com/SpiderLabs/ModSecurity"
+        dest: "{{ modsec_src_dir }}"
+        version: "v3/master"
+        recursive: no
+        force: yes
 
-  # MODSECURITY
+    - name: Inicializar submódulos do ModSecurity
+      shell: |
+        cd {{ modsec_src_dir }}
+        git submodule init
+        git submodule update --init --recursive
+      args:
+        chdir: "{{ modsec_src_dir }}"
 
-  #################################################################
+    - name: Executar build.sh do ModSecurity
+      shell: ./build.sh
+      args:
+        chdir: "{{ modsec_src_dir }}"
 
-  * name: Clonar ModSecurity
-    git:
-    repo: https://github.com/owasp-modsecurity/ModSecurity
-    dest: "{{ modsec_dir }}"
-    version: v3/master
-    depth: 1
+    - name: Configurar ModSecurity
+      shell: ./configure
+      args:
+        chdir: "{{ modsec_src_dir }}"
 
-  * name: Inicializar submodules
-    shell: |
-    git submodule init
-    git submodule update
-    args:
-    chdir: "{{ modsec_dir }}"
+    - name: Compilar ModSecurity
+      shell: make -j{{ ansible_processor_nproc }}
+      args:
+        chdir: "{{ modsec_src_dir }}"
 
-  * name: Build ModSecurity
-    shell: |
-    ./build.sh
-    ./configure
-    make -j $(nproc)
-    make install
-    args:
-    chdir: "{{ modsec_dir }}"
+    - name: Instalar ModSecurity
+      shell: make install
+      args:
+        chdir: "{{ modsec_src_dir }}"
+        creates: "{{ modsec_install_dir }}/lib/libmodsecurity.so.3"
 
-  #################################################################
+    # ─── 3. CONECTOR NGINX ──────────────────────────────────────────────────────
 
-  # CONNECTOR NGINX
+    - name: Clonar ModSecurity-nginx connector
+      git:
+        repo: "https://github.com/SpiderLabs/ModSecurity-nginx"
+        dest: "{{ modsec_nginx_dir }}"
+        depth: 1
+        force: yes
 
-  #################################################################
+    # ─── 4. RECOMPILAR NGINX ────────────────────────────────────────────────────
 
-  * name: Clonar ModSecurity-nginx
-    git:
-    repo: https://github.com/owasp-modsecurity/ModSecurity-nginx.git
-    dest: "{{ modsec_nginx_dir }}"
-    depth: 1
+    - name: Baixar source do Nginx {{ nginx_version }}
+      get_url:
+        url: "http://nginx.org/download/nginx-{{ nginx_version }}.tar.gz"
+        dest: "/usr/local/src/nginx-{{ nginx_version }}.tar.gz"
 
-  #################################################################
+    - name: Extrair source do Nginx
+      unarchive:
+        src: "/usr/local/src/nginx-{{ nginx_version }}.tar.gz"
+        dest: "/usr/local/src/"
+        remote_src: yes
+        creates: "{{ nginx_src_dir }}"
 
-  # NGINX SOURCE
+    - name: Configurar Nginx com módulo ModSecurity
+      shell: "./configure {{ nginx_configure_flags }}"
+      args:
+        chdir: "{{ nginx_src_dir }}"
 
-  #################################################################
+    - name: Compilar Nginx
+      shell: make -j{{ ansible_processor_nproc }}
+      args:
+        chdir: "{{ nginx_src_dir }}"
 
-  * name: Download nginx source
-    get_url:
-    url: https://nginx.org/download/nginx-{{ nginx_version }}.tar.gz
-    dest: /usr/local/src/nginx-{{ nginx_version }}.tar.gz
+    - name: Instalar Nginx (sobrescreve binário)
+      shell: make install
+      args:
+        chdir: "{{ nginx_src_dir }}"
 
-  * name: Extrair nginx
-    unarchive:
-    src: /usr/local/src/nginx-{{ nginx_version }}.tar.gz
-    dest: /usr/local/src
-    remote_src: yes
+    - name: Verificar se módulo foi gerado
+      stat:
+        path: "{{ nginx_modules_dir }}/ngx_http_modsecurity_module.so"
+      register: modsec_module
+      failed_when: not modsec_module.stat.exists
 
-  #################################################################
+    # ─── 5. CONFIGURAR MODSECURITY ──────────────────────────────────────────────
 
-  # COMPILAR MODULO
+    - name: Criar diretório de configuração ModSecurity
+      file:
+        path: "{{ modsec_conf_dir }}"
+        state: directory
+        mode: '0755'
 
-  #################################################################
+    - name: Copiar modsecurity.conf
+      copy:
+        src: "{{ modsec_src_dir }}/modsecurity.conf-recommended"
+        dest: "{{ modsec_conf_dir }}/modsecurity.conf"
+        remote_src: yes
+        force: no
 
-  * name: Configure nginx module
-    shell: |
-    ./configure 
-    --with-compat 
-    --prefix=/etc/nginx 
-    --sbin-path=/usr/sbin/nginx 
-    --modules-path=/usr/lib64/nginx/modules 
-    --conf-path=/etc/nginx/nginx.conf 
-    --error-log-path=/var/log/nginx/error.log 
-    --http-log-path=/var/log/nginx/access.log 
-    --pid-path=/var/run/nginx.pid 
-    --lock-path=/var/run/nginx.lock 
-    --http-client-body-temp-path=/var/cache/nginx/client_temp 
-    --http-proxy-temp-path=/var/cache/nginx/proxy_temp 
-    --http-fastcgi-temp-path=/var/cache/nginx/fastcgi_temp 
-    --http-uwsgi-temp-path=/var/cache/nginx/uwsgi_temp 
-    --http-scgi-temp-path=/var/cache/nginx/scgi_temp 
-    --user=nginx 
-    --group=nginx 
-    --with-file-aio 
-    --with-threads 
-    --with-http_addition_module 
-    --with-http_auth_request_module 
-    --with-http_dav_module 
-    --with-http_flv_module 
-    --with-http_gunzip_module 
-    --with-http_gzip_static_module 
-    --with-http_mp4_module 
-    --with-http_random_index_module 
-    --with-http_realip_module 
-    --with-http_secure_link_module 
-    --with-http_slice_module 
-    --with-http_ssl_module 
-    --with-http_stub_status_module 
-    --with-http_sub_module 
-    --with-http_v2_module 
-    --with-http_v3_module 
-    --with-mail 
-    --with-mail_ssl_module 
-    --with-stream 
-    --with-stream_realip_module 
-    --with-stream_ssl_module 
-    --with-stream_ssl_preread_module 
-    --add-dynamic-module={{ modsec_nginx_dir }}
-    args:
-    chdir: "{{ nginx_src_dir }}"
+    - name: Copiar unicode.mapping
+      copy:
+        src: "{{ modsec_src_dir }}/unicode.mapping"
+        dest: "{{ modsec_conf_dir }}/unicode.mapping"
+        remote_src: yes
+        force: no
 
-  * name: Build module
-    shell: make modules
-    args:
-    chdir: "{{ nginx_src_dir }}"
+    - name: Ativar SecRuleEngine (modo bloqueio)
+      replace:
+        path: "{{ modsec_conf_dir }}/modsecurity.conf"
+        regexp: 'SecRuleEngine DetectionOnly'
+        replace: 'SecRuleEngine On'
 
-  * name: Criar diretório modules
-    file:
-    path: /usr/lib64/nginx/modules
-    state: directory
+    # ─── 6. OWASP CRS ───────────────────────────────────────────────────────────
 
-  * name: Instalar módulo
-    copy:
-    src: "{{ nginx_src_dir }}/objs/ngx_http_modsecurity_module.so"
-    dest: /usr/lib64/nginx/modules/ngx_http_modsecurity_module.so
-    remote_src: yes
-    mode: "0755"
+    - name: Clonar OWASP CRS
+      git:
+        repo: "https://github.com/coreruleset/coreruleset.git"
+        dest: "{{ modsec_conf_dir }}/crs"
+        force: yes
 
-  #################################################################
+    - name: Copiar crs-setup.conf
+      copy:
+        src: "{{ modsec_conf_dir }}/crs/crs-setup.conf.example"
+        dest: "{{ modsec_conf_dir }}/crs/crs-setup.conf"
+        remote_src: yes
+        force: no
 
-  # CONFIG MODSECURITY
+    - name: Ativar modo bloqueio no CRS (comentar pass)
+      replace:
+        path: "{{ modsec_conf_dir }}/crs/crs-setup.conf"
+        regexp: '^(SecDefaultAction "phase:[12],log,auditlog,pass")'
+        replace: '#\1'
 
-  #################################################################
+    - name: Ativar deny 403 no CRS (descomentar)
+      replace:
+        path: "{{ modsec_conf_dir }}/crs/crs-setup.conf"
+        regexp: '^# (SecDefaultAction "phase:[12],log,auditlog,deny,status:403")'
+        replace: '\1'
 
-  * name: Criar diretório modsecurity
-    file:
-    path: /etc/nginx/modsecurity
-    state: directory
+    - name: Criar main.conf do ModSecurity
+      copy:
+        dest: "{{ modsec_conf_dir }}/main.conf"
+        content: |
+          Include {{ modsec_conf_dir }}/modsecurity.conf
+          Include {{ modsec_conf_dir }}/crs/crs-setup.conf
+          Include {{ modsec_conf_dir }}/crs/rules/*.conf
+        force: no
 
-  * name: Copiar modsecurity.conf
-    copy:
-    src: "{{ modsec_dir }}/modsecurity.conf-recommended"
-    dest: /etc/nginx/modsecurity/modsecurity.conf
-    remote_src: yes
+    - name: Criar exclusão para acesso por IP (regra 920350)
+      copy:
+        dest: "{{ modsec_conf_dir }}/crs/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf"
+        content: |
+          # Permite acesso direto por IP no header Host
+          SecRuleRemoveById 920350
+        force: no
 
-  * name: Copiar unicode.mapping
-    copy:
-    src: "{{ modsec_dir }}/unicode.mapping"
-    dest: /etc/nginx/modsecurity/unicode.mapping
-    remote_src: yes
+    # ─── 7. NGINX.CONF — load_module ────────────────────────────────────────────
 
-  * name: Ativar bloqueio
-    replace:
-    path: /etc/nginx/modsecurity/modsecurity.conf
-    regexp: 'SecRuleEngine DetectionOnly'
-    replace: 'SecRuleEngine On'
+    - name: Verificar se load_module já está presente
+      shell: grep -c 'load_module modules/ngx_http_modsecurity_module.so' {{ nginx_conf_dir }}/nginx.conf || true
+      register: load_module_check
+      changed_when: false
 
-  #################################################################
+    - name: Adicionar load_module no topo do nginx.conf
+      shell: sed -i '1s|^|load_module modules/ngx_http_modsecurity_module.so;\n\n|' {{ nginx_conf_dir }}/nginx.conf
+      when: load_module_check.stdout == "0"
 
-  # CRS
+    # ─── 8. FAIL2BAN ────────────────────────────────────────────────────────────
 
-  #################################################################
+    - name: Criar filtro fail2ban para ModSecurity
+      copy:
+        dest: /etc/fail2ban/filter.d/modsecurity.conf
+        content: |
+          [Definition]
+          failregex = \[error\] \d+#\d+: \*\d+ \[client <HOST>\] ModSecurity: Access denied
+          datepattern = ^%%Y/%%m/%%d %%H:%%M:%%S
+          ignoreregex =
 
-  * name: Clonar CRS
-    git:
-    repo: https://github.com/coreruleset/coreruleset.git
-    dest: /etc/nginx/modsecurity/crs
+    - name: Criar jail fail2ban para ModSecurity
+      copy:
+        dest: /etc/fail2ban/jail.d/modsecurity.conf
+        content: |
+          [modsecurity]
+          enabled  = true
+          filter   = modsecurity
+          logpath  = {{ nginx_error_log }}
+          maxretry = {{ fail2ban_maxretry }}
+          findtime = {{ fail2ban_findtime }}
+          bantime  = {{ fail2ban_bantime }}
+          action   = firewallcmd-ipset[name=modsecurity, port="80,443", protocol=tcp]
 
-  * name: Criar crs-setup.conf
-    copy:
-    src: /etc/nginx/modsecurity/crs/crs-setup.conf.example
-    dest: /etc/nginx/modsecurity/crs/crs-setup.conf
-    remote_src: yes
+    - name: Habilitar e iniciar fail2ban
+      systemd:
+        name: fail2ban
+        enabled: yes
+        state: restarted
 
-  #################################################################
+    # ─── 9. VHOST — ativar ModSecurity no sites-enabled ────────────────────────
 
-  # MAIN.CONF
+    - name: Verificar se modsecurity já está no vhost
+      shell: grep -c 'modsecurity on' /etc/nginx/sites-enabled/uscall.conf || true
+      register: vhost_modsec_check
+      changed_when: false
 
-  #################################################################
+    - name: Adicionar modsecurity on no vhost após root /var/www
+      replace:
+        path: /etc/nginx/sites-enabled/uscall.conf
+        regexp: '(root /var/www;)'
+        replace: |
+          \1
 
-  * name: Criar main.conf
-    copy:
-    dest: /etc/nginx/modsecurity/main.conf
-    content: |
-    Include /etc/nginx/modsecurity/modsecurity.conf
-    Include /etc/nginx/modsecurity/crs/crs-setup.conf
-    Include /etc/nginx/modsecurity/crs/rules/*.conf
+                  modsecurity on;
+                  modsecurity_rules_file {{ modsec_conf_dir }}/main.conf;
+      when: vhost_modsec_check.stdout == "0"
 
-  #################################################################
+    - name: Configurar error_page 403 para retornar código correto
+      replace:
+        path: /etc/nginx/sites-enabled/uscall.conf
+        regexp: 'error_page 403 /error_pages/403;'
+        replace: |
+          error_page 403 = @blocked;
 
-  # NGINX.CONF
+                  location @blocked {
+                      default_type text/html;
+                      return 403 '<html><body><h1>403 - Acesso Bloqueado</h1><p>Sua requisição foi bloqueada por violar as políticas de segurança.</p></body></html>';
+                  }
 
-  #################################################################
+    # ─── 10. VALIDAR E RECARREGAR NGINX ─────────────────────────────────────────
 
-  * name: Inserir load_module
-    lineinfile:
-    path: /etc/nginx/nginx.conf
-    line: "load_module modules/ngx_http_modsecurity_module.so;"
-    insertbefore: BOF
+    - name: Testar configuração do Nginx
+      shell: nginx -t
+      register: nginx_test
+      changed_when: false
 
-  #################################################################
+    - name: Recarregar Nginx
+      shell: nginx -s reload
+      when: nginx_test.rc == 0
 
-  # USCALL.CONF
+    - name: Verificar status do fail2ban jail
+      shell: fail2ban-client status modsecurity
+      register: fail2ban_status
+      changed_when: false
 
-  #################################################################
-
-  * name: Habilitar ModSecurity no vhost
-    blockinfile:
-    path: /etc/nginx/sites-enabled/uscall.conf
-    marker: "# {mark} MODSECURITY"
-    insertafter: "root /var/www;"
-    block: |
-    modsecurity on;
-    modsecurity_rules_file /etc/nginx/modsecurity/main.conf;
-
-  #################################################################
-
-  # TESTE
-
-  #################################################################
-
-  * name: Testar nginx
-    command: nginx -t
-    register: nginx_test
-    changed_when: false
-
-  * name: Falhar se inválido
-    fail:
-    msg: "{{ nginx_test.stderr }}"
-    when: nginx_test.rc != 0
-
-  #################################################################
-
-  # RELOAD
-
-  #################################################################
-
-  * name: Reload nginx
-    service:
-    name: nginx
-    state: reloaded
-
-  #################################################################
-
-  # STATUS
-
-  #################################################################
-
-  * name: Resultado
-    debug:
-    msg:
-    - "ModSecurity instalado"
-    - "CRS instalado"
-    - "Modulo nginx instalado"
-    - "Configuracao aplicada"
-    - "nginx validado"
-    - "Deploy concluido"
-    ...
+    - name: Exibir status do fail2ban
+      debug:
+        msg: "{{ fail2ban_status.stdout_lines }}"
