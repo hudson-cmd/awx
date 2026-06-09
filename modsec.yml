@@ -121,12 +121,12 @@
       args:
         chdir: "{{ modsec_src_dir }}"
 
-    - name: Executar build.sh do ModSecurity
+       - name: Executar build.sh do ModSecurity
       shell: ./build.sh
       args:
         chdir: "{{ modsec_src_dir }}"
 
-     - name: Configurar ModSecurity
+    - name: Configurar ModSecurity
       shell: ./configure
       args:
         chdir: "{{ modsec_src_dir }}"
