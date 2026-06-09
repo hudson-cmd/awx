@@ -109,7 +109,7 @@
       git:
         repo: "https://github.com/SpiderLabs/ModSecurity"
         dest: "{{ modsec_src_dir }}"
-        version: "v3/master"
+        version: "v3.0.13"
         recursive: no
         force: yes
 
@@ -130,6 +130,12 @@
       shell: ./configure
       args:
         chdir: "{{ modsec_src_dir }}"
+
+ - name: Corrigir incompatibilidade do MaxMindDB com GCC moderno
+      replace:
+        path: "{{ modsec_src_dir }}/src/utils/geo_lookup.cc"
+        regexp: 'MMDB_lookup_string\(&mmdb'
+        replace: 'MMDB_lookup_string(const_cast<MMDB_s *>(&mmdb),'      
 
     - name: Compilar ModSecurity
       shell: make -j{{ ansible_processor_nproc }}
