@@ -3,6 +3,8 @@
   hosts: all
   become: yes
 
+  tasks:
+
     # Ajustar php.ini
     - name: Alterando 'session.gc_maxlifetime' 
       lineinfile:
