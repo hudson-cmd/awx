@@ -5,6 +5,13 @@
 
   tasks:
 
+  # Atualizar e reinstalar uscall
+    - name: Atualizar o pacote uscall
+      command: yum update uscall -y
+
+    - name: Reinstalar o pacote uscall
+      command: yum reinstall uscall -y
+
     # Ajustar php.ini
     - name: Alterando 'session.gc_maxlifetime' 
       lineinfile:
