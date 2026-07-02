@@ -1,0 +1,30 @@
+---
+- name: Reparar tabelas MyISAM
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Parar MariaDB
+      ansible.builtin.systemd:
+        name: mariadb
+        state: stopped
+
+    - name: Reparar tabelas
+      ansible.builtin.shell: |
+        myisamchk -r /var/lib/mysql/*/*.MYI
+
+    - name: Iniciar MariaDB
+      ansible.builtin.systemd:
+        name: mariadb
+        state: started
+
+    - name: Verificar se ainda existe alguma tabela com problema
+      ansible.builtin.shell: |
+        myisamchk -s /var/lib/mysql/*/*.MYI
+      register: check
+      failed_when: false
+      changed_when: false
+
+    - name: Exibir resultado
+      ansible.builtin.debug:
+        msg: "{{ check.stdout | default('Nenhuma tabela crashada encontrada.') }}"
