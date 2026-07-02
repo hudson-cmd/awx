@@ -2,6 +2,8 @@
 - name: Reparar tabelas MyISAM
   hosts: all
   become: yes
+  gather_facts: no
+  ignore_unreachable: yes
 
   tasks:
     - name: Executar reparo das tabelas MyISAM
@@ -24,4 +26,9 @@
 
     - name: Exibir resultado
       ansible.builtin.debug:
-        msg: "{{ check.stdout if check.stdout else 'Nenhuma tabela crashada encontrada.' }}"
+        msg: >-
+          {% if check.stdout | trim == '' %}
+          Nenhuma tabela crashada encontrada.
+          {% else %}
+          {{ check.stdout }}
+          {% endif %}
