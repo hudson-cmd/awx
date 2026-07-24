@@ -1,10 +1,14 @@
 ---
-- name: Health Check - Verificar tabelas corrompidas do MariaDB/MySQL
+- name: Health Check - Verificar Integridade do MariaDB/MySQL
   hosts: all
   gather_facts: false
   become: true
   become_user: root
-  ignore_unreachable: yes
+  ignore_unreachable: true
+
+  vars:
+    mysql_user: root
+    mysql_password: "{{ mysql_root_password }}"
 
   tasks:
 
@@ -14,46 +18,56 @@
       changed_when: false
       failed_when: false
 
-    - name: Executar verificação das tabelas
-      command: mysqlcheck --all-databases --check --silent
+    - name: Executar Health Check do Banco
+      command:
+        argv:
+          - mysqlcheck
+          - "-u{{ mysql_user }}"
+          - "-p{{ mysql_password }}"
+          - "--all-databases"
+          - "--check"
+          - "--silent"
       register: mysqlcheck
       changed_when: false
       failed_when: false
+      no_log: true
       when: mysqlcheck_bin.rc == 0
 
-    - name: Servidor saudável
+    - name: Resultado - Banco OK
       debug:
         msg: |
-          ==========================================
-          HOST: {{ inventory_hostname }}
-          STATUS: OK
+          ==================================================
+          HOST   : {{ inventory_hostname }}
+          STATUS : ✅ OK
+
           Nenhuma tabela corrompida encontrada.
-          ==========================================
+          ==================================================
       when:
         - mysqlcheck_bin.rc == 0
         - mysqlcheck.rc == 0
 
-    - name: Servidor com problemas
+    - name: Resultado - Banco com Problemas
       debug:
         msg: |
-          ==========================================
-          HOST: {{ inventory_hostname }}
-          STATUS: ERRO
+          ==================================================
+          HOST   : {{ inventory_hostname }}
+          STATUS : ❌ ERRO
 
           {{ mysqlcheck.stdout }}
 
           {{ mysqlcheck.stderr }}
-          ==========================================
+          ==================================================
       when:
         - mysqlcheck_bin.rc == 0
         - mysqlcheck.rc != 0
 
-    - name: mysqlcheck não encontrado
+    - name: Resultado - mysqlcheck não instalado
       debug:
         msg: |
-          ==========================================
-          HOST: {{ inventory_hostname }}
-          STATUS: AVISO
-          mysqlcheck não está instalado.
-          ==========================================
+          ==================================================
+          HOST   : {{ inventory_hostname }}
+          STATUS : ⚠️ AVISO
+
+          O utilitário mysqlcheck não está instalado.
+          ==================================================
       when: mysqlcheck_bin.rc != 0
