@@ -1,0 +1,44 @@
+- name: Verificar integridade do MySQL
+  hosts: all
+  gather_facts: false
+  ignore_unreachable: yes
+
+  vars:
+    mysql_cmd: "mysqlcheck --all-databases --check --silent"
+
+  tasks:
+
+    - name: Verificar se o mysqlcheck existe
+      command: which mysqlcheck
+      register: mysqlcheck_exists
+      changed_when: false
+      failed_when: false
+
+    - name: Executar mysqlcheck
+      command: "{{ mysql_cmd }}"
+      register: mysqlcheck_result
+      changed_when: false
+      failed_when: false
+      when: mysqlcheck_exists.rc == 0
+
+    - name: Definir status
+      set_fact:
+        mysql_status: >-
+          {% if mysqlcheck_exists.rc != 0 %}
+          MYSQLCHECK NÃO ENCONTRADO
+          {% elif mysqlcheck_result.rc == 0 %}
+          OK
+          {% else %}
+          CORROMPIDO
+          {% endif %}
+
+    - name: Resultado
+      debug:
+        msg:
+          - "Host: {{ inventory_hostname }}"
+          - "Status: {{ mysql_status }}"
+
+    - name: Exibir detalhes da corrupção
+      debug:
+        var: mysqlcheck_result.stdout_lines
+      when: mysql_status == "CORROMPIDO"
