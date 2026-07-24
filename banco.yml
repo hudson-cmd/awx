@@ -1,24 +1,33 @@
+---
 - name: Verificar integridade do MySQL
-  hosts: all
+  hosts: bancos
   gather_facts: false
   ignore_unreachable: yes
 
-  vars:
-    mysql_cmd: "mysqlcheck --all-databases --check --silent"
-
   tasks:
 
-    - name: Verificar se o mysqlcheck existe
+    - name: Verificar se mysqlcheck existe
       command: which mysqlcheck
       register: mysqlcheck_exists
       changed_when: false
       failed_when: false
 
     - name: Executar mysqlcheck
-      command: "{{ mysql_cmd }}"
+      command: mysqlcheck --all-databases --check
       register: mysqlcheck_result
       changed_when: false
       failed_when: false
+      when: mysqlcheck_exists.rc == 0
+
+    - name: Exibir retorno do mysqlcheck
+      debug:
+        msg:
+          - "Host: {{ inventory_hostname }}"
+          - "RC: {{ mysqlcheck_result.rc }}"
+          - "STDOUT:"
+          - "{{ mysqlcheck_result.stdout }}"
+          - "STDERR:"
+          - "{{ mysqlcheck_result.stderr }}"
       when: mysqlcheck_exists.rc == 0
 
     - name: Definir status
@@ -26,19 +35,27 @@
         mysql_status: >-
           {% if mysqlcheck_exists.rc != 0 %}
           MYSQLCHECK NÃO ENCONTRADO
-          {% elif mysqlcheck_result.rc == 0 %}
-          OK
-          {% else %}
+          {% elif
+              'Corrupt' in mysqlcheck_result.stdout or
+              'corrupt' in mysqlcheck_result.stdout or
+              'ERROR' in mysqlcheck_result.stdout or
+              'error' in mysqlcheck_result.stdout or
+              'warning' in mysqlcheck_result.stdout or
+              'Warning' in mysqlcheck_result.stdout %}
           CORROMPIDO
+          {% else %}
+          OK
           {% endif %}
 
-    - name: Resultado
+    - name: Resultado Final
       debug:
         msg:
+          - "======================================"
           - "Host: {{ inventory_hostname }}"
           - "Status: {{ mysql_status }}"
+          - "======================================"
 
-    - name: Exibir detalhes da corrupção
+    - name: Mostrar detalhes caso haja problema
       debug:
         var: mysqlcheck_result.stdout_lines
       when: mysql_status == "CORROMPIDO"
