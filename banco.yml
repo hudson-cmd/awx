@@ -1,6 +1,6 @@
 ---
 - name: Verificar integridade do MySQL
-  hosts: bancos
+  hosts: all
   gather_facts: false
   ignore_unreachable: yes
 
