@@ -1,61 +1,59 @@
 ---
-- name: Verificar integridade do MySQL
+- name: Health Check - Verificar tabelas corrompidas do MariaDB/MySQL
   hosts: all
   gather_facts: false
+  become: true
+  become_user: root
   ignore_unreachable: yes
 
   tasks:
 
-    - name: Verificar se mysqlcheck existe
+    - name: Verificar se mysqlcheck está instalado
       command: which mysqlcheck
-      register: mysqlcheck_exists
+      register: mysqlcheck_bin
       changed_when: false
       failed_when: false
 
-    - name: Executar mysqlcheck
-      command: mysqlcheck --all-databases --check
-      register: mysqlcheck_result
+    - name: Executar verificação das tabelas
+      command: mysqlcheck --all-databases --check --silent
+      register: mysqlcheck
       changed_when: false
       failed_when: false
-      when: mysqlcheck_exists.rc == 0
+      when: mysqlcheck_bin.rc == 0
 
-    - name: Exibir retorno do mysqlcheck
+    - name: Servidor saudável
       debug:
-        msg:
-          - "Host: {{ inventory_hostname }}"
-          - "RC: {{ mysqlcheck_result.rc }}"
-          - "STDOUT:"
-          - "{{ mysqlcheck_result.stdout }}"
-          - "STDERR:"
-          - "{{ mysqlcheck_result.stderr }}"
-      when: mysqlcheck_exists.rc == 0
+        msg: |
+          ==========================================
+          HOST: {{ inventory_hostname }}
+          STATUS: OK
+          Nenhuma tabela corrompida encontrada.
+          ==========================================
+      when:
+        - mysqlcheck_bin.rc == 0
+        - mysqlcheck.rc == 0
 
-    - name: Definir status
-      set_fact:
-        mysql_status: >-
-          {% if mysqlcheck_exists.rc != 0 %}
-          MYSQLCHECK NÃO ENCONTRADO
-          {% elif
-              'Corrupt' in mysqlcheck_result.stdout or
-              'corrupt' in mysqlcheck_result.stdout or
-              'ERROR' in mysqlcheck_result.stdout or
-              'error' in mysqlcheck_result.stdout or
-              'warning' in mysqlcheck_result.stdout or
-              'Warning' in mysqlcheck_result.stdout %}
-          CORROMPIDO
-          {% else %}
-          OK
-          {% endif %}
-
-    - name: Resultado Final
+    - name: Servidor com problemas
       debug:
-        msg:
-          - "======================================"
-          - "Host: {{ inventory_hostname }}"
-          - "Status: {{ mysql_status }}"
-          - "======================================"
+        msg: |
+          ==========================================
+          HOST: {{ inventory_hostname }}
+          STATUS: ERRO
 
-    - name: Mostrar detalhes caso haja problema
+          {{ mysqlcheck.stdout }}
+
+          {{ mysqlcheck.stderr }}
+          ==========================================
+      when:
+        - mysqlcheck_bin.rc == 0
+        - mysqlcheck.rc != 0
+
+    - name: mysqlcheck não encontrado
       debug:
-        var: mysqlcheck_result.stdout_lines
-      when: mysql_status == "CORROMPIDO"
+        msg: |
+          ==========================================
+          HOST: {{ inventory_hostname }}
+          STATUS: AVISO
+          mysqlcheck não está instalado.
+          ==========================================
+      when: mysqlcheck_bin.rc != 0
