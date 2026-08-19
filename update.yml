@@ -1,7 +1,0 @@
----
-- name: Comando yum update do Uscall
-  become: yes
-  hosts: all
-  tasks:
-    - name: Atualizar o pacote uscall
-      command: yum update uscall -y
