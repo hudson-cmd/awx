@@ -1,8 +1,0 @@
----
-- name: Teste de ping com Ansible
-  hosts: all
-  gather_facts: no
-
-  tasks:
-    - name: Enviar ping para os hosts
-      ansible.builtin.ping:
